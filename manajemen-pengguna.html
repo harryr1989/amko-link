@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base href=\"./\">
+  <base href="">
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>AMKO — Manajemen Pengguna</title>
@@ -547,7 +547,7 @@
         branchesBefore.forEach(b=>{ const key = `${ACC_BASE}@${b}`; const laci = [{ nama:'LACI TUNAI', jenis:'cash', saldo:0, saldoAwal:0, ket:'', update: today, locked:true }]; localStorage.setItem(key, JSON.stringify(laci)); });
         localStorage.removeItem('amko.auth'); localStorage.removeItem('amko.auth:exp');
         alert('Factory Reset selesai.\nSilakan login dengan: owner1 / 123');
-        location.href='login.html'; return;
+        amkoGoto('index.html'); return;
       }catch(e){ alert('Terjadi kesalahan saat Factory Reset: '+e.message); return; }
     }
     const branchSel = $('#resetBranch').value || '__ALL__';
@@ -565,10 +565,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
-    const s=getSession(); if(!s){ location.replace('login.html'); return; } if((s.role||'').toLowerCase()!=='owner'){ location.replace('transaksi-mini-atm.html'); return; }
+    const s=getSession(); if(!s){ amkoGoto('login.html'); return; } if((s.role||'').toLowerCase()!=='owner'){ amkoGoto('transaksi-mini-atm.html'); return; }
     document.body.classList.add('owner'); $('#currentUser').textContent = s.username || s.name || 'Owner';
     $('#collapseBtn')?.addEventListener('click', ()=> document.body.classList.toggle('collapse'));
-    $('#logoutLink')?.addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('amko.auth'); localStorage.removeItem('amko.auth:exp'); location.href='login.html'; });
+    $('#logoutLink')?.addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('amko.auth'); localStorage.removeItem('amko.auth:exp'); amkoGoto('index.html'); });
     $('#navToggle')?.addEventListener('click', ()=> document.querySelector('.sidebar')?.classList.toggle('open'));
     state.users = ensureSeed();
     state.branches = getBranches(); syncBranchDropdowns(); renderBranches();
@@ -627,8 +627,23 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 <script>
   function amkoLogout(){
     try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
-    window.location.replace('index.html');
+    window.amkoGoto('index.html');
   }
+</script>
+<script>
+// === AMKO safe navigation for GitHub Pages (project subfolder) ===
+function amkoGoto(p){
+  try{
+    var s = String(p||'index.html').trim();
+    s = s.replace(/^['"]+|['"]+$/g,''); // drop quotes
+    s = s.replace(/^\.+\//,'');       // drop leading ./
+    s = s.replace(/^\/+/, '');         // drop leading /
+    // keep relative path within repo folder
+    window.location.href = s || 'index.html';
+  }catch(e){
+    window.amkoGoto('index.html');
+  }
+}
 </script>
 <script src="amko-sync.config.js"></script>
 <script src="amko-sync.js"></script>

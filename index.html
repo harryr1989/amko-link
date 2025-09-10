@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base href=\"./\">
+  <base href="">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - AMKO</title>
@@ -185,8 +185,23 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 <script>
   function amkoLogout(){
     try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
-    window.location.replace('index.html');
+    window.amkoGoto('index.html');
   }
+</script>
+<script>
+// === AMKO safe navigation for GitHub Pages (project subfolder) ===
+function amkoGoto(p){
+  try{
+    var s = String(p||'index.html').trim();
+    s = s.replace(/^['"]+|['"]+$/g,''); // drop quotes
+    s = s.replace(/^\.+\//,'');       // drop leading ./
+    s = s.replace(/^\/+/, '');         // drop leading /
+    // keep relative path within repo folder
+    window.location.href = s || 'index.html';
+  }catch(e){
+    window.amkoGoto('index.html');
+  }
+}
 </script>
 <script src="amko-sync.config.js"></script>
 <script src="amko-sync.js"></script>

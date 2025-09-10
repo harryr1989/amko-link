@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base href=\"./\">
+  <base href="">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AMKO — Mutasi Saldo</title>
@@ -1105,7 +1105,7 @@ function setTodayRange(){
       e.preventDefault();
       localStorage.removeItem(AUTH_KEY);
       localStorage.removeItem(EXP_KEY);
-      location.href = 'login.html';
+      amkoGoto('index.html');
     });
   }catch(e){}
 
@@ -1146,7 +1146,7 @@ function setTodayRange(){
       if(page!=='input-saldo-awal.html'){
         // Save where the user tried to go, for after-completion bounce
         sessionStorage.setItem('amko.next', page || 'transaksi-mini-atm.html');
-        location.replace('master-saldo-akun.html');
+        amkoGoto('master-saldo-akun.html');
       }
     }
   }
@@ -1165,8 +1165,23 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 <script>
   function amkoLogout(){
     try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
-    window.location.replace('index.html');
+    window.amkoGoto('index.html');
   }
+</script>
+<script>
+// === AMKO safe navigation for GitHub Pages (project subfolder) ===
+function amkoGoto(p){
+  try{
+    var s = String(p||'index.html').trim();
+    s = s.replace(/^['"]+|['"]+$/g,''); // drop quotes
+    s = s.replace(/^\.+\//,'');       // drop leading ./
+    s = s.replace(/^\/+/, '');         // drop leading /
+    // keep relative path within repo folder
+    window.location.href = s || 'index.html';
+  }catch(e){
+    window.amkoGoto('index.html');
+  }
+}
 </script>
 <script src="amko-sync.config.js"></script>
 <script src="amko-sync.js"></script>
