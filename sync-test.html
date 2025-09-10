@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AMKO Sync Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font:14px/1.5 system-ui,Segoe UI,Roboto,Arial;padding:16px;max-width:780px;margin:auto}
+    h1{font-size:20px;margin:0 0 12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    input,button,select{height:38px;padding:0 10px;border:1px solid #e5e7eb;border-radius:10px}
+    button{background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .card{border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin:10px 0}
+    code{background:#f8fafc;padding:2px 6px;border-radius:6px}
+    .muted{color:#64748b}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #e5e7eb;padding:6px 8px}
+    th{background:#f1f5f9;text-align:left}
+  </style>
+  <script>
+    // gunakan konfigurasi yang sama seperti app
+    window.AMKO_SUPA = window.AMKO_SUPA || {
+      url: "PASTE_YOUR_SUPABASE_URL_IF_NEEDED",
+      anonKey: "PASTE_YOUR_SUPABASE_ANON_KEY_IF_NEEDED",
+      table: "kv",
+      namespace: "amko-link",
+      syncAll: true,
+      excludeKeys: ["amko.auth","amko.auth:exp"],
+      autoPullMs: 0,       // matikan auto untuk test manual
+      autoPushMs: 0,
+      instantPushDebounceMs: 800,
+      debug: true
+    };
+  </script>
+  <script src="amko-supa.js"></script>
+</head>
+<body>
+  <h1>AMKO Sync Test</h1>
+  <div class="card">
+    <div>URL: <code id="cfgUrl"></code></div>
+    <div>Table: <code id="cfgTable"></code></div>
+    <div>Exclude: <code id="cfgEx"></code></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <input id="k" placeholder="key (mis. amko:test)" style="flex:1;min-width:220px">
+      <input id="v" placeholder="value (teks atau JSON)" style="flex:2;min-width:280px">
+    </div>
+    <div class="row">
+      <button id="btnSet">Set ke localStorage</button>
+      <button id="btnPush">Push ke Supabase</button>
+      <button id="btnPull">Pull dari Supabase</button>
+      <button id="btnSync">Sync Now (push+pull)</button>
+    </div>
+    <div class="row muted">
+      lastPush: <code id="lp"></code> &nbsp; lastPull: <code id="lpl"></code>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <button id="btnListLS">List localStorage (filtered)</button>
+      <button id="btnListCloud">List tabel kv (cloud)</button>
+    </div>
+    <div id="out"></div>
+  </div>
+
+  <script>
+    amkoSupa.auto();
+    const cfg = window.AMKO_SUPA;
+    const el = s=>document.querySelector(s);
+    el('#cfgUrl').textContent = cfg.url || "(pakai dari amko-supa.config.js)";
+    el('#cfgTable').textContent = cfg.table;
+    el('#cfgEx').textContent = (cfg.excludeKeys||[]).join(', ') || '(none)';
+
+    function ts(x){ return x ? new Date(Number(x)).toLocaleString() : '—'; }
+    function refreshTimes(){
+      el('#lp').textContent = ts(localStorage.getItem('amko:lastPush'));
+      el('#lpl').textContent = ts(localStorage.getItem('amko:lastPull'));
+    }
+    refreshTimes(); setInterval(refreshTimes, 1500);
+
+    function shouldSyncKey(k){
+      if ((cfg.excludeKeys||[]).includes(k)) return false;
+      if (cfg.syncAll) return true;
+      const ns = (cfg.namespace||'amko') + ':';
+      return k.startsWith(ns);
+    }
+
+    el('#btnSet').onclick = () => {
+      const k = el('#k').value.trim() || 'amko:test';
+      const vRaw = el('#v').value;
+      let v = vRaw;
+      try{ v = JSON.parse(vRaw); }catch{}
+      localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+      alert('Set localStorage: ' + k);
+    };
+    el('#btnPush').onclick = async ()=>{ await amkoSupa.push(true); alert('Pushed.'); };
+    el('#btnPull').onclick = async ()=>{ await amkoSupa.pull(); alert('Pulled.'); };
+    el('#btnSync').onclick = async ()=>{ await amkoSupa.syncNow(); alert('Sync done.'); };
+
+    el('#btnListLS').onclick = ()=>{
+      const rows = [];
+      for (let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if (!shouldSyncKey(k)) continue;
+        rows.push([k, localStorage.getItem(k)]);
+      }
+      renderTable(['key','value (raw)'], rows);
+    };
+    el('#btnListCloud').onclick = async ()=>{
+      const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+      const { data, error } = await sb.from(cfg.table).select('key,value').order('key', { ascending:true });
+      if (error){ alert('Cloud error: '+error.message); return; }
+      const rows = (data||[]).map(r=>[r.key, typeof r.value==='string' ? r.value : JSON.stringify(r.value)]);
+      renderTable(['key','value (cloud)'], rows);
+    };
+
+    function renderTable(headers, rows){
+      const tbl = document.createElement('table');
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; trh.appendChild(th); });
+      thead.appendChild(trh); tbl.appendChild(thead);
+      const tb = document.createElement('tbody');
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      el('#out').innerHTML = ''; el('#out').appendChild(tbl);
+    }
+  </script>
+</body>
+</html>
