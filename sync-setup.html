@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AMKO — Sync Setup (Whitelist)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="amko-supa.config.js"></script>
+  <script src="amko-supa.js"></script>
+  <style>
+    body{font:14px/1.5 system-ui,Segoe UI,Roboto,Arial;padding:16px;max-width:820px;margin:auto}
+    h1{font-size:20px;margin:0 0 12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    input,button{height:38px;padding:0 10px;border:1px solid #e5e7eb;border-radius:10px}
+    button{background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .card{border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin:10px 0}
+    .muted{color:#64748b}
+    .keys{display:grid;grid-template-columns:1fr;gap:8px;max-height:280px;overflow:auto}
+    label.key{display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;padding:8px;border-radius:10px}
+    code{background:#f8fafc;padding:2px 6px;border-radius:6px}
+    .ok{color:#16a34a} .warn{color:#d97706} .bad{color:#dc2626}
+  </style>
+</head>
+<body>
+  <h1>AMKO — Sync Setup</h1>
+  <div class="card">
+    <div>Project URL: <code id="cfgUrl"></code></div>
+    <div>Table: <code id="cfgTable"></code></div>
+    <div>Mode: <b>Whitelist</b> (hanya kunci yang dicentang yang disinkronkan)</div>
+  </div>
+
+  <div class="card">
+    <b>Langkah 1 — Pindai kunci data</b>
+    <div class="row"><button id="scan">Scan kunci di perangkat ini</button></div>
+    <div id="keys" class="keys"></div>
+  </div>
+
+  <div class="card">
+    <b>Langkah 2 — Simpan daftar kunci untuk sinkron</b>
+    <div class="row">
+      <button id="save">Simpan & Push daftar</button>
+      <button id="sync">Sync Now (push + pull)</button>
+    </div>
+    <div class="muted">Daftar kunci juga tersimpan di cloud pada key <code>amko:includeKeys</code>.</div>
+  </div>
+
+  <div class="card">
+    <b>Langkah 3 — Uji cepat</b>
+    <div class="row">
+      <button id="openApp">Buka Aplikasi</button>
+      <button id="pullOnly">Tarik dari Cloud</button>
+      <span class="muted">lastPush=<code id="lp"></code> &nbsp; lastPull=<code id="lpl"></code></span>
+    </div>
+  </div>
+
+  <script>
+    const el = s=>document.querySelector(s);
+    const cfg = window.AMKO_SUPA;
+    el('#cfgUrl').textContent = cfg.url;
+    el('#cfgTable').textContent = cfg.table;
+
+    function ts(x){ return x ? new Date(Number(x)).toLocaleString() : '—'; }
+    function refreshTimes(){
+      el('#lp').textContent = ts(localStorage.getItem('amko:lastPush'));
+      el('#lpl').textContent = ts(localStorage.getItem('amko:lastPull'));
+    }
+    refreshTimes(); setInterval(refreshTimes, 1200);
+
+    amkoSupa.auto();
+
+    // Scan local keys and render checkboxes
+    el('#scan').onclick = ()=>{
+      const keys = amkoSupa.scanLocalKeys();
+      const include = amkoSupa.getInclude();
+      const box = el('#keys'); box.innerHTML='';
+      if (!keys.length){
+        box.innerHTML = '<div class="muted">Tidak ada kunci di localStorage. Coba jalankan aplikasi terlebih dulu.</div>';
+        return;
+      }
+      keys.forEach(k=>{
+        const checked = include.includes(k) || /^amko:(?!auth)/.test(k) || /^amko-link/.test(k) || /^trans|^saldo|^mutasi/.test(k);
+        const row = document.createElement('label');
+        row.className = 'key';
+        row.innerHTML = '<input type="checkbox" '+(checked?'checked':'')+' value="'+k+'"> <code>'+k+'</code>';
+        box.appendChild(row);
+      });
+    };
+
+    // Save include list into cloud & local
+    el('#save').onclick = async ()=>{
+      const sel = Array.from(document.querySelectorAll('.key input:checked')).map(i=>i.value);
+      await amkoSupa.setIncludeKeys(sel);
+      alert('Daftar kunci tersimpan & dipush. Buka perangkat kedua → Sync Now.');
+    };
+
+    // Manual sync
+    el('#sync').onclick = async ()=>{ await amkoSupa.syncNow(); alert('Sync selesai.'); };
+
+    // Pull only for device B
+    el('#pullOnly').onclick = async ()=>{ await amkoSupa.pull(); alert('Pull selesai.'); };
+
+    // Open app root
+    el('#openApp').onclick = ()=>{ location.href = './'; };
+  </script>
+</body>
+</html>
