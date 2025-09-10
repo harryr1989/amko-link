@@ -1,9 +1,13 @@
-# AMKO Sync v2 — Patch
-File yang perlu di-replace di repo:
-- `amko-sync.js` (baru, auto-pull/push + deteksi perubahan localStorage)
-- `amko-sync.config.js` (sudah berisi endpoint; ada interval 15 detik)
+# AMKO Sync v3 (Instant Push)
+Ganti 2 file ini di repo:
+- `amko-sync.js` (v3: push cepat setelah ada perubahan, auto-pull 5s, fallback push 10s)
+- `amko-sync.config.js` (endpoint + interval sudah diset)
 
-Cara pakai:
-1) Upload 2 file ini ke root repo GitHub (replace yang lama).
-2) Buka aplikasi di laptop & HP pada URL yang sama.
-3) Lakukan perubahan di laptop → tunggu max 15 detik → refresh HP. Atau jalankan `amkoSync.syncNow()` di console untuk sinkron instan.
+Setelah replace:
+1) Buka aplikasi di laptop & tambah transaksi → dalam ≤2 detik data di-push.
+2) HP auto-pull tiap 5 detik → refresh/datang sendiri.
+3) Bisa pakai perintah manual: `amkoSync.syncNow()` di Console untuk tarik/kirim instan.
+
+Tips debug:
+- Buka endpoint Web App di browser → harus tampil JSON `{ "ok": true, ... }`.
+- Cek `localStorage.getItem("amko:lastPush")` di Console → harus berubah setelah simpan.
