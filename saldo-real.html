@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base href=\"./\">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AMKO — Saldo Real</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#F8FAFC;--panel:#FFFFFF;--text:#0F172A;--muted:#475569;
+      --brand:#2563EB;--hover:#F1F5F9;--border:#E2E8F0;
+      --shadow:0 6px 24px rgba(2,6,23,.06),0 2px 8px rgba(2,6,23,.05);
+      --hdr-bg: rgba(37,99,235,.10);
+      --hdr-text: inherit;
+      --hdr-border: #E2E8F0;
+    }
+    .dark{
+      --bg:#0B1220;--panel:#0F172A;--text:#E5E7EB;--muted:#94A3B8;
+      --brand:#60A5FA;--hover:#111827;--border:#1F2937;
+      --shadow:0 8px 32px rgba(0,0,0,.35);
+      --hdr-border:#1F2937;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    a{color:inherit;text-decoration:none}
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh;transition:grid-template-columns .25s ease}
+
+    /* Sidebar */
+    .sidebar{position:sticky;top:0;height:100vh;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:12px;padding:14px;box-shadow:var(--shadow);z-index:10;overflow-y:auto}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:linear-gradient(135deg,var(--panel),rgba(37,99,235,.08))}
+    .brand .logo{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--brand);color:#fff;font-weight:800}
+    .brand .title{font-weight:700}
+    .toolbar{display:flex;gap:8px}
+    .btnx{padding:9px 12px;border:1px solid var(--border);background:var(--panel);border-radius:10px;cursor:pointer;color:var(--text)}
+    .btnx:hover{background:var(--hover)}
+    .mobile-toggle{display:none}
+    .search{position:relative}
+    .search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:12px;background:transparent;color:var(--text);outline:none}
+    .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6}
+    .section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 10px;margin-top:6px}
+    .menu{display:flex;flex-direction:column;gap:4px}
+    .item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:1px solid transparent;cursor:pointer}
+    .item:hover{background:var(--hover);border-color:var(--border)}
+    .item.active{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.25)}
+    .owner-only{display:none}
+    body.owner .owner-only{display:inline-flex}
+    .not-owner-only{display:none}
+    body.not-owner .not-owner-only{display:inline-flex}
+
+    @media (max-width:960px){
+      .app{grid-template-columns:1fr}
+      .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .2s;width:260px}
+      .sidebar.open{transform:none}
+      .mobile-toggle{display:inline-flex}
+    }
+    .collapse .label{display:none}
+    .collapse .app{grid-template-columns:72px 1fr}
+    .collapse .sidebar{padding:14px 10px}
+    .collapse .search,.collapse .section{display:none}
+    .collapse .item{justify-content:center}
+
+    /* Topbar & content */
+    .topbar{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:10px 14px;z-index:1}
+    .chip{font-size:12px;color:var(--muted)}
+    .content{padding:18px;display:grid;gap:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+
+    /* Table */
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    .table thead th{background:var(--hdr-bg) !important;color:var(--hdr-text) !important;border-top:1px solid var(--hdr-border) !important;border-left:1px solid var(--hdr-border) !important}
+    thead th{text-align:left;position:sticky;top:0;z-index:2}
+    th,td{padding:8px 10px;border-top:1px solid var(--border);border-left:1px solid var(--border)}
+    th:last-child,td:last-child{border-right:1px solid var(--border)}
+    thead th:first-child{border-top-left-radius:8px}
+    thead th:last-child{border-top-right-radius:8px}
+    tbody tr:nth-child(even){background:rgba(148,163,184,.06)}
+    td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+    /* Status badges */
+    .status{font-weight:600;padding:4px 6px;border-radius:4px;display:inline-block}
+    .status.valid{background:#dcfce7;color:#166534}
+    .status.kurang{background:#fee2e2;color:#b91c1c;animation:blingWarn 1.2s ease-in-out infinite}
+    .status.lebih{background:#dbeafe;color:#1d4ed8;animation:blingWarn 1.2s ease-in-out infinite}
+    @keyframes blingWarn{0%,100%{box-shadow:0 0 0 rgba(0,0,0,0);transform:none}50%{box-shadow:0 0 14px rgba(185,28,28,.35),0 0 14px rgba(29,78,216,.35);transform:scale(1.04)}}
+
+    /* Visual Kit seragam */
+    :root{ --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0; --kpi-bg: rgba(37,99,235,.06); --kpi-border: rgba(37,99,235,.25); --kpi-text: inherit; }
+    .branch-chip{ font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--chip-border); background: var(--chip-bg); color: var(--chip-fg); }
+    .stat{ border:1px solid var(--kpi-border); background: var(--kpi-bg); border-radius:12px; padding:12px }
+    .stat .tit{font-size:12px;color:var(--muted)}
+    .stat .val{font-size:18px;font-weight:800;color:var(--kpi-text)}
+  </style>
+
+<style>
+
+/* ================= AMKO UI KIT v1 (Global Consistency) ================= */
+
+/* 1) Tipografi & spacing global (seragam) */
+:root{
+  --font-base: 14px;
+  --line-base: 1.55;
+  --fz-chip: 12px;
+  --fz-label: 12.5px;
+  --fz-input: 13px;
+  --fz-btn: 13px;
+  --ctrl-h: 40px;
+  --pad-input-x: 12px;
+  --pad-btn-y: .5rem;   /* ~8px */
+  --pad-btn-x: .7rem;   /* ~11px */
+  --tbl-pad-y: 9px;
+  --tbl-pad-x: 10px;
+
+  /* warna chip seragam */
+  --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0;
+}
+
+body{
+  font: var(--font-base)/var(--line-base) system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+/* 2) Form: input/select/label/filter seragam */
+label, .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+input.form-control, .form-control,
+select.form-select, .form-select,
+.control, select{
+  height: var(--ctrl-h) !important;
+  padding: 0 var(--pad-input-x) !important;
+  font-size: var(--fz-input) !important;
+  line-height: 1.3 !important;
+}
+
+/* “Filter wrapper” seragam */
+.flt-wrap .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+.flt-wrap .form-control, .flt-wrap .form-select{
+  padding: .45rem .6rem !important;
+  font-size: var(--fz-input) !important;
+  height: var(--ctrl-h) !important;
+}
+
+/* 3) Tombol seragam & tap target ramah jempol */
+.btn, .btnx{
+  font-size: var(--fz-btn) !important;
+  height: var(--ctrl-h) !important;
+  padding: var(--pad-btn-y) var(--pad-btn-x) !important;
+  border-radius: 10px !important;
+}
+.btn-icon{ width: 36px; height: 36px; border-radius: 8px; }
+
+/* 4) Chip/cabang seragam di semua halaman */
+.branch-chip{
+  font-size: var(--fz-chip) !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--chip-border) !important;
+  background: var(--chip-bg) !important;
+  color: var(--chip-fg) !important;
+  border-radius: 999px !important;
+}
+
+/* 5) Tabel: padding & numerik */
+table{ width:100%; border-collapse: separate; border-spacing: 0; }
+th, td{ padding: var(--tbl-pad-y) var(--tbl-pad-x) !important; }
+td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+
+/* Header tabel “ikut tema” default yang sudah ada */
+thead th{ position: sticky; top: 0; z-index: 1; }
+
+/* 6) Grid & kartu supaya rapi di HP */
+.content{ padding: 14px !important; gap: 12px !important; }
+.card{ border-radius: 14px !important; padding: 14px !important; }
+
+/* 7) Filter bar responsif → otomatis dua baris di layar sempit */
+.filters, .filter-grid, .hdr-actions, .branchbar .d-flex{
+  display: flex; flex-wrap: wrap; gap: 8px !important;
+}
+.filter-grid > *{ min-width: 160px; }
+
+/* 8) Tabel lebar → gulir horizontal aman di HP */
+.table-responsive, .table-wrap{ overflow: auto !important; }
+table.minwide{ min-width: 720px; }
+
+/* 9) Sidebar: breakpoint konsisten dan tombol mobile tampak */
+@media (max-width: 960px){
+  .app{ grid-template-columns: 1fr !important; }
+  .sidebar{ position: fixed; left:0; top:0; width:260px; transform: translateX(-100%); transition: transform .2s; z-index: 20; }
+  .sidebar.open{ transform: none; }
+  .mobile-toggle{ display: inline-flex !important; }
+  .content{ padding: 12px !important; }
+}
+
+/* 10) Judul/kop yang konsisten */
+h3{ font-size: 18px; margin: 0; }
+h4{ font-size: 16px; margin: 0; }
+h5{ font-size: 15px; margin: 0; }
+small,.form-text{ font-size: 12px; }
+
+</style>
+</head>
+<body>
+<div id="root" class="app">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar" aria-label="Sidebar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="title">AMKO Panel</div>
+        <div style="font-size:12px;color:var(--muted)">Mini ATM</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="collapseBtn" class="btnx" title="Kecilkan / Besarkan Sidebar">⟷</button>
+      <button id="themeBtn" class="btnx" title="Mode Terang/Gelap">🌓</button>
+      <button id="mobileClose" class="btnx mobile-toggle" title="Tutup">✕</button>
+    </div>
+
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input id="search" placeholder="Cari menu…"/>
+    </div>
+
+    <div class="section">Menu</div>
+<nav class="menu">
+  <a class="item owner-only" href="dashboard.html"><span class="label">📊 Dashboard</span></a>
+  <a class="item" href="saldo-real.html"><span class="label">📑 Saldo Real</span></a>
+  <a class="item" href="master-saldo-akun.html"><span class="label">💰 Master Akun Saldo</span></a>
+  <a class="item" href="mutasi-saldo.html"><span class="label">🔄 Mutasi Saldo</span></a>
+  <a class="item" href="transaksi-mini-atm.html"><span class="label">🏧 Transaksi Mini ATM</span></a>
+  <a class="item owner-only" href="manajemen-pengguna.html"><span class="label">👥 Manajemen Pengguna</span></a>
+  <a class="item" href="#" id="logoutLink"><span class="label">🚪 Logout</span></a>
+</nav>
+
+    <div class="section">Info</div>
+    <div style="font-size:12px;color:var(--muted);padding:8px 10px;border:1px dashed var(--border);border-radius:10px">
+      Login: <strong id="currentUser">—</strong>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <header class="topbar">
+      <button id="mobileOpen" class="btnx mobile-toggle" title="Menu">☰</button>
+      <strong>Saldo Real</strong>
+      <span class="chip">Tanggal: <span id="today"></span></span>
+      <span class="chip" id="branchChip" class="branch-chip">—</span>
+    </header>
+
+    <section class="content">
+      <!-- FILTER CABANG (Owner) -->
+      <div class="card" id="ownerFilters">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted" style="font-size:12px">Cabang</span>
+            <select id="selBranch" class="form-select form-select-sm" style="width:220px"></select>
+          </div>
+          <div id="noteBranch" class="form-text" style="font-size:12px;color:#64748b"></div>
+        </div>
+      </div>
+
+      <!-- TABEL SALDO REAL (disembunyikan untuk OWNER) -->
+      <div class="card" id="cardAkun">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h5 class="m-0">Tabel Saldo Real</h5>
+          <div class="d-flex gap-2">
+            <button id="btnSimpan" class="btn btn-primary btn-sm not-owner-only">Simpan Ringkasan</button>
+          </div>
+        </div>
+
+        <div class="table-responsive mt-2">
+          <table class="table" id="tblAkun">
+            <thead>
+              <tr>
+                <th>Akun</th>
+                <th class="text-end">Saldo Sistem</th>
+                <th class="text-end">Saldo Manual</th>
+                <th class="text-end">Selisih</th>
+                <th>Status</th>
+                <th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody id="bodyAkun"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- === KPI TRANSAKSI (BARU) === -->
+      <div class="card" id="kpiCard">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h5 class="m-0">Ringkasan KPI Transaksi (sesuai filter tanggal)</h5>
+          <small class="text-muted">Sumber: Riwayat <em>Transaksi Mini ATM</em> pada cabang & periode yang sama.</small>
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-6 col-md-4 col-lg-2"><div class="stat"><div class="tit">Omset</div><div id="kpiOmset" class="val">Rp 0</div></div></div>
+          <div class="col-6 col-md-4 col-lg-2"><div class="stat"><div class="tit">Transfer</div><div id="kpiTransfer" class="val">Rp 0</div></div></div>
+          <div class="col-6 col-md-4 col-lg-2"><div class="stat"><div class="tit">Tarik</div><div id="kpiTarik" class="val">Rp 0</div></div></div>
+          <div class="col-6 col-md-4 col-lg-2"><div class="stat"><div class="tit">Adm Bank</div><div id="kpiAdmBank" class="val">Rp 0</div></div></div>
+          <div class="col-6 col-md-4 col-lg-2 owner-only"><div class="stat"><div class="tit">Profit</div><div id="kpiProfit" class="val">Rp 0</div></div></div>
+          <div class="col-6 col-md-4 col-lg-2"><div class="stat"><div class="tit">Total Transaksi</div><div id="kpiTotal" class="val">0</div></div></div>
+        </div>
+      </div>
+
+      <!-- RIWAYAT + FILTER TANGGAL -->
+      <div class="card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h5 class="m-0">Riwayat Saldo Real</h5>
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-muted" style="font-size:12px">Dari</span>
+              <input type="date" id="fFrom" class="form-control form-control-sm">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-muted" style="font-size:12px">Sampai</span>
+              <input type="date" id="fTo" class="form-control form-control-sm">
+            </div>
+            <button id="btnApplyDate" class="btn btn-outline-primary btn-sm">Terapkan</button>
+            <button id="btnResetDate" class="btn btn-outline-secondary btn-sm">Reset</button>
+            <button id="presetToday" class="btn btn-light btn-sm">Hari ini</button>
+            <button id="presetWeek" class="btn btn-light btn-sm">Minggu ini</button>
+            <button id="presetMonth" class="btn btn-light btn-sm">Bulan ini</button>
+            <button id="btnClearRiwayat" class="btn btn-outline-danger btn-sm owner-only">🗑️ Hapus Riwayat</button>
+          </div>
+        </div>
+        <div class="table-responsive mt-2">
+          <table class="table" id="tblRiwayat">
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>User</th>
+                <th>Akun</th>
+                <th class="text-end">Saldo Sistem</th>
+                <th class="text-end">Saldo Manual</th>
+                <th class="text-end">Selisih</th>
+                <th>Status</th>
+                <th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody id="bodyRiwayat"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ===== Auth & basics ===== */
+const AUTH_KEY='amko.auth', EXP_KEY=AUTH_KEY+':exp', LOGIN_PAGE='login.html';
+let session=null;
+(function requireAuth(){
+  try{ session=JSON.parse(localStorage.getItem(AUTH_KEY))||null }catch{ session=null }
+  const exp=Number(localStorage.getItem(EXP_KEY))||0;
+  const expired = exp && Date.now()>exp;
+  if(!session || expired){
+    if(expired){ localStorage.removeItem(AUTH_KEY); localStorage.removeItem(EXP_KEY); }
+    location.href=LOGIN_PAGE; return;
+  }
+})();
+document.getElementById('today').textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+document.getElementById('currentUser').textContent = (session?.name||session?.username||'Pengguna') + (session?.role?` (${session.role})`:'');
+
+/* Sidebar utils */
+(function(){
+  const root=document.documentElement, app=document.getElementById('root'), sidebar=document.getElementById('sidebar');
+  const collapseBtn=document.getElementById('collapseBtn'), themeBtn=document.getElementById('themeBtn');
+  const mobileOpen=document.getElementById('mobileOpen'), mobileClose=document.getElementById('mobileClose');
+  const search=document.getElementById('search');
+  const store={get:k=>localStorage.getItem(k),set:(k,v)=>localStorage.setItem(k,v)};
+  if(store.get('amko.theme')==='dark') root.classList.add('dark');
+  themeBtn?.addEventListener('click',()=>{root.classList.toggle('dark');store.set('amko.theme', root.classList.contains('dark')?'dark':'light')});
+  if(store.get('sidebar-collapsed')==='1') app.classList.add('collapse');
+  collapseBtn?.addEventListener('click',()=>{app.classList.toggle('collapse');store.set('sidebar-collapsed', app.classList.contains('collapse')?'1':'0')});
+  mobileOpen?.addEventListener('click',()=> sidebar.classList.add('open'));
+  mobileClose?.addEventListener('click',()=> sidebar.classList.remove('open'));
+  search?.addEventListener('input', ()=>{
+    const q=(search.value||'').toLowerCase().trim();
+    document.querySelectorAll('.menu .item').forEach(a=>{
+      const txt=(a.textContent||'').toLowerCase();
+      a.style.display = txt.includes(q)?'flex':'none';
+    });
+  });
+})();
+
+/* ===== Keys & helpers ===== */
+const USERS_KEY='amko.users';
+const BR_KEY='amko.branches';
+const LSK_AKUN='akun';
+const LSK_TRANS='transMini';            // <— data Transaksi Mini ATM
+const STATE_KEY='saldoReal.state';
+const RIW_KEY_BASE='riwSaldo';
+const DF_KEY='saldoReal.filterDate';
+const DFLT_BRANCH='AMKO 18';
+
+const keyFor = (base, branch)=> branch ? `${base}@${branch}` : base;
+const ls = (k,v)=> v===undefined ? JSON.parse(localStorage.getItem(k)||'null') : localStorage.setItem(k, JSON.stringify(v));
+function loadJSON(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def }catch{ return def } }
+
+/* users & branches */
+let users = loadJSON(USERS_KEY,[]).map(u=>({name2:'',branch:'',...u}));
+let branches = loadJSON(BR_KEY,[]);
+if(!Array.isArray(branches) || !branches.length){ branches=[DFLT_BRANCH]; localStorage.setItem(BR_KEY, JSON.stringify(branches)); }
+const me = users.find(u => (u.username||'').toLowerCase() === (session?.username||'').toLowerCase());
+const myBranch = me?.branch || branches[0];
+const isOwner = (session?.role||'').toLowerCase()==='owner';
+document.body.classList.toggle('owner',  isOwner);
+document.body.classList.toggle('not-owner', !isOwner);
+
+/* Sembunyikan Tabel Saldo Real jika OWNER */
+(function(){
+  const cardAkun = document.getElementById('cardAkun');
+  if(isOwner && cardAkun){ cardAkun.style.display='none'; }
+})();
+
+/* Palette per branch */
+const COLORS20=[{bg:'#E6FFFA',fg:'#115E59',border:'#99F6E4'},{bg:'#EEF2FF',fg:'#3730A3',border:'#C7D2FE'},{bg:'#FFFBEB',fg:'#92400E',border:'#FDE68A'},{bg:'#FFE4E6',fg:'#9F1239',border:'#FECDD3'},{bg:'#F0FDF4',fg:'#166534',border:'#BBF7D0'},{bg:'#F5F3FF',fg:'#5B21B6',border:'#DDD6FE'},{bg:'#E0F2FE',fg:'#075985',border:'#BAE6FD'},{bg:'#F7FEE7',fg:'#3F6212',border:'#D9F99D'},{bg:'#FAE8FF',fg:'#86198F',border:'#F5D0FE'},{bg:'#F8FAFC',fg:'#334155',border:'#E2E8F0'}];
+const SPECIAL={ 'amko 18':{bg:'#F5F3FF',fg:'#5B21B6',border:'#DDD6FE'}, 'amko 25':{bg:'#ECFDF5',fg:'#065F46',border:'#A7F3D0'} };
+function paletteForBranch(br){ const key=String(br||'').toLowerCase(); if(SPECIAL[key]) return SPECIAL[key]; let idx=branches.indexOf(br); if(idx<0) idx=0; return COLORS20[idx%COLORS20.length]; }
+function applyBranchBadge(br){
+  const pal=paletteForBranch(br), chip=document.getElementById('branchChip');
+  chip.textContent=br||'—'; chip.style.backgroundColor=pal.bg; chip.style.color=pal.fg; chip.style.border=`1px solid ${pal.border}`; chip.style.padding='2px 8px'; chip.style.borderRadius='999px';
+  document.documentElement.style.setProperty('--hdr-bg', pal.bg);
+  document.documentElement.style.setProperty('--hdr-text', pal.fg);
+  document.documentElement.style.setProperty('--hdr-border', pal.border);
+}
+
+/* Load akun from Saldo Akun (awal) */
+function seedAkunIfEmpty(arr){
+  if(arr && arr.length) return arr;
+  return [
+    {nama:'LACI TUNAI', saldo:10000000, saldoAwal:10000000, ket:'-','locked':true},
+    {nama:'BRI (538)', saldo:5000000, saldoAwal:0, ket:'-'},
+    {nama:'JAGO', saldo:2000000, saldoAwal:0, ket:'-'}
+  ];
+}
+function loadAkun(branch){
+  const byBr = ls(keyFor(LSK_AKUN, branch));
+  if(Array.isArray(byBr)) return seedAkunIfEmpty(byBr);
+  const legacy = ls(LSK_AKUN);
+  if(Array.isArray(legacy)) return seedAkunIfEmpty(legacy);
+  return seedAkunIfEmpty([]);
+}
+
+/* State per-cabang untuk manual/ket */
+function loadState(branch){ return ls(keyFor(STATE_KEY, branch)) || {}; }
+function saveState(branch, state){ ls(keyFor(STATE_KEY, branch), state); }
+
+/* Riwayat per-cabang */
+function getRiwayat(branch){ return ls(keyFor(RIW_KEY_BASE, branch)) || []; }
+function setRiwayat(branch, v){ ls(keyFor(RIW_KEY_BASE, branch), v); }
+
+/* Date-filter per-cabang */
+function getDateFilter(branch){ return ls(keyFor(DF_KEY, branch)) || {from:'', to:''}; }
+function setDateFilter(branch, filter){ ls(keyFor(DF_KEY, branch), filter); }
+
+/* Fisik keywords */
+const FISIK_KEYWORDS=['laci','tunai','kas','cash'];
+const isFisik=a=>FISIK_KEYWORDS.some(k=>String(a).toLowerCase().includes(k));
+
+/* Elements */
+const elBranch=document.getElementById('selBranch');
+const ownerFilters=document.getElementById('ownerFilters');
+const $bodyAkun=document.getElementById('bodyAkun');
+const $bodyRiwayat=document.getElementById('bodyRiwayat');
+const fFrom=document.getElementById('fFrom');
+const fTo=document.getElementById('fTo');
+const btnApplyDate=document.getElementById('btnApplyDate');
+const btnResetDate=document.getElementById('btnResetDate');
+const presetToday=document.getElementById('presetToday');
+const presetWeek=document.getElementById('presetWeek');
+const presetMonth=document.getElementById('presetMonth');
+
+/* Init branch */
+let currentBranch = myBranch;
+(function initBranch(){
+  if(isOwner){
+    ownerFilters.style.display='';
+    elBranch.innerHTML = branches.map(b=>`<option value="${b}">${b}</option>`).join('');
+    const saved = localStorage.getItem('saldoReal.branch') || myBranch;
+    elBranch.value = branches.includes(saved)? saved : branches[0];
+    currentBranch = elBranch.value;
+    elBranch.addEventListener('change', ()=>{
+      currentBranch = elBranch.value;
+      localStorage.setItem('saldoReal.branch', currentBranch);
+      applyBranchBadge(currentBranch);
+      applyDateUI(); renderAkun(); renderRiwayat(); renderKPI();  // <— refresh KPI juga
+    });
+  } else {
+    ownerFilters.style.display='none';
+    currentBranch = myBranch;
+  }
+  applyBranchBadge(currentBranch);
+  applyDateUI();
+})();
+
+/* Formatters & status */
+const fmtID=new Intl.NumberFormat('id-ID');
+const toRp=n=>'Rp '+fmtID.format(Number(n)||0);
+function now(){const d=new Date(),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}
+function status(sys,man){
+  if(man>sys)return{txt:'LEBIH',sel:man-sys,cls:'lebih'};
+  if(man<sys)return{txt:'KURANG',sel:man-sys,cls:'kurang'};
+  return{txt:'VALID',sel:0,cls:'valid'};
+}
+
+/* Render Akun (ikut saldo-akun-awal) */
+function renderAkun(){
+  const akunData = loadAkun(currentBranch);
+  const state = loadState(currentBranch);
+  $bodyAkun.innerHTML='';
+  akunData.forEach(a=>{
+    const sistem = Number(a.saldo)||0;
+    const rec = state[a.nama] || {};
+    const manual = Number(rec.manual ?? sistem);
+    const ket = rec.ket ?? '';
+    const s = status(sistem, manual);
+
+    const reqAttr = (s.txt==='VALID') ? '' : 'required';
+    const disabledAttr = isOwner ? 'disabled readonly' : '';
+
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${a.nama}</td>
+      <td class="num">${toRp(sistem)}</td>
+      <td class="num">
+        <input ${disabledAttr} class="form-control form-control-sm text-end inp-manual" style="max-width:120px" value="${fmtID.format(manual)}" data-akun="${a.nama}"/>
+      </td>
+      <td class="num">${toRp(Math.abs(s.sel))}</td>
+      <td><span class="status ${s.cls}">${s.txt}</span></td>
+      <td>
+        <input ${disabledAttr} class="form-control form-control-sm inp-ket" style="max-width:240px" value="${ket}" data-akun="${a.nama}" ${reqAttr}
+               placeholder="${s.txt==='VALID'?'(Opsional)':'Wajib diisi jika KURANG/LEBIH'}"/>
+      </td>`;
+    $bodyAkun.appendChild(tr);
+  });
+}
+
+/* Input handler saldo manual/keterangan */
+$bodyAkun.addEventListener('input', (e)=>{
+  const el=e.target;
+  const akun=el.dataset.akun;
+  if(!akun) return;
+  if(isOwner){ return; } // owner tidak boleh edit
+
+  const tr = el.closest('tr');
+  if(!tr) return;
+
+  const akunData = loadAkun(currentBranch);
+  const a = akunData.find(x=>String(x.nama)===String(akun));
+  const sistem = Number(a?.saldo)||0;
+
+  const state = loadState(currentBranch);
+  if(el.classList.contains('inp-manual')){
+    const val = Number(String(el.value).replace(/[^0-9]/g,''))||0;
+    el.value = fmtID.format(val);
+    state[akun] = {...(state[akun]||{}), manual: val};
+  } else if(el.classList.contains('inp-ket')){
+    state[akun] = {...(state[akun]||{}), ket: el.value};
+  }
+  saveState(currentBranch, state);
+
+  const manual = Number(state[akun]?.manual ?? sistem);
+  const s = status(sistem, manual);
+
+  const tds = tr.querySelectorAll('td');
+  tds[3].textContent = toRp(Math.abs(s.sel));
+  const stSpan = tds[4].querySelector('.status');
+  if(stSpan){
+    stSpan.textContent = s.txt;
+    stSpan.className = 'status ' + s.cls;
+  }
+  const ketInput = tds[5].querySelector('.inp-ket');
+  if(ketInput){
+    if(s.txt==='VALID'){
+      ketInput.removeAttribute('required');
+      ketInput.placeholder='(Opsional)';
+    }else{
+      ketInput.setAttribute('required','required');
+      ketInput.placeholder='Wajib diisi jika KURANG/LEBIH';
+    }
+  }
+});
+
+/* Ringkas + Simpan Riwayat */
+function ringkas(){
+  const akunData = loadAkun(currentBranch);
+  const state = loadState(currentBranch);
+  let rs=0,rm=0,fs=0,fm=0,kr=[],kf=[];
+  const rekItems=[], fisItems=[];
+  akunData.forEach(a=>{
+    const sistem = Number(a.saldo)||0;
+    const manual = Number(state[a.nama]?.manual ?? sistem);
+    const ketx = state[a.nama]?.ket || '';
+    const st = status(sistem, manual);
+    const row = {nama:a.nama,sistem,manual,selisih:st.sel,status:st.txt,ket:ketx};
+
+    if(isFisik(a.nama)){
+      fs+=sistem; fm+=manual; if(ketx) kf.push(a.nama+':'+ketx);
+      fisItems.push(row);
+    } else {
+      rs+=sistem; rm+=manual; if(ketx) kr.push(a.nama+':'+ketx);
+      rekItems.push(row);
+    }
+  });
+  const sRek=status(rs,rm), sFis=status(fs,fm);
+  return{
+    rek:{s:rs,m:rm,sel:sRek.sel,st:sRek.txt,ket:kr.join(' | '), rincian:rekItems},
+    fis:{s:fs,m:fm,sel:sFis.sel,st:sFis.txt,ket:kf.join(' | '), rincian:fisItems}
+  };
+}
+
+function hasMissingKeteranganIfBadStatus(){
+  const akunData = loadAkun(currentBranch);
+  const state = loadState(currentBranch);
+  const missing=[];
+  akunData.forEach(a=>{
+    const sistem=Number(a.saldo)||0;
+    const manual=Number(state[a.nama]?.manual ?? sistem);
+    const ket=(state[a.nama]?.ket || '').trim();
+    const s=status(sistem, manual);
+    if((s.txt==='KURANG' || s.txt==='LEBIH') && !ket){
+      missing.push(a.nama);
+    }
+  });
+  return missing;
+}
+
+document.getElementById('btnSimpan')?.addEventListener('click', ()=>{
+  const missing = hasMissingKeteranganIfBadStatus();
+  if(missing.length){
+    alert('Mohon isi Keterangan untuk akun berikut karena status KURANG/LEBIH:\n- ' + missing.join('\n- '));
+    return;
+  }
+  const {rek,fis}=ringkas();
+  const tgl=now(),user=(session?.username||'owner');
+  const r=getRiwayat(currentBranch);
+  r.push({tgl,user,akun:'Total Saldo Rek',sistem:rek.s,manual:rek.m,selisih:rek.sel,status:rek.st,ket:rek.ket,rincian:rek.rincian});
+  r.push({tgl,user,akun:'Total Saldo Fisik/Laci Tunai',sistem:fis.s,manual:fis.m,selisih:fis.sel,status:fis.st,ket:fis.ket,rincian:fis.rincian});
+  setRiwayat(currentBranch,r); renderRiwayat();
+  alert('Ringkasan tersimpan (2 baris).');
+});
+
+/* ===== Date filter (UI & logic) ===== */
+function applyDateUI(){
+  const {from,to}=getDateFilter(currentBranch);
+  fFrom.value = from || '';
+  fTo.value   = to   || '';
+}
+function parseDateInput(v){
+  if(!v) return null;
+  const [Y,M,D]=v.split('-').map(Number);
+  return new Date(Y,(M||1)-1,(D||1),0,0,0,0);
+}
+function parseRowDate(s){
+  const [d,t] = s.split(' ');
+  if(!d) return new Date(NaN);
+  const [Y,M,D]=d.split('-').map(Number);
+  let h=0,m=0,x=0; if(t){ [h,m,x]=t.split(':').map(Number); }
+  return new Date(Y,(M||1)-1,(D||1),h||0,m||0,x||0,0);
+}
+document.getElementById('btnApplyDate').addEventListener('click', ()=>{
+  const from=fFrom.value||'', to=fTo.value||'';
+  setDateFilter(currentBranch, {from,to});
+  renderRiwayat(); renderKPI();
+});
+document.getElementById('btnResetDate').addEventListener('click', ()=>{
+  setDateFilter(currentBranch, {from:'', to:''});
+  applyDateUI(); renderRiwayat(); renderKPI();
+});
+
+/* Preset cepat */
+function toISODate(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+presetToday.addEventListener('click', ()=>{
+  const d=new Date();
+  const from=toISODate(d), to=toISODate(d);
+  setDateFilter(currentBranch,{from,to}); applyDateUI(); renderRiwayat(); renderKPI();
+});
+presetWeek.addEventListener('click', ()=>{
+  const d=new Date();
+  const day=d.getDay();
+  const deltaStart = (day===0?6:day-1);
+  const start = new Date(d); start.setDate(d.getDate()-deltaStart);
+  const end = new Date(start); end.setDate(start.getDate()+6);
+  const from=toISODate(start), to=toISODate(end);
+  setDateFilter(currentBranch,{from,to}); applyDateUI(); renderRiwayat(); renderKPI();
+});
+presetMonth.addEventListener('click', ()=>{
+  const d=new Date();
+  const start=new Date(d.getFullYear(), d.getMonth(), 1);
+  const end=new Date(d.getFullYear(), d.getMonth()+1, 0);
+  const from=toISODate(start), to=toISODate(end);
+  setDateFilter(currentBranch,{from,to}); applyDateUI(); renderRiwayat(); renderKPI();
+});
+
+/* Render Riwayat + collapse rincian */
+function renderRiwayat(){
+  const rows=getRiwayat(currentBranch);
+  const {from,to}=getDateFilter(currentBranch);
+  const dFrom=parseDateInput(from);
+  const dToEnd = (function(){
+    if(!to) return null;
+    const d=parseDateInput(to);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999);
+  })();
+
+  const filtered = rows.filter(r=>{
+    const dt=parseRowDate(r.tgl);
+    if(isNaN(dt)) return false;
+    if(dFrom && dt<dFrom) return false;
+    if(dToEnd && dt>dToEnd) return false;
+    return true;
+  });
+
+  if(!filtered.length){
+    $bodyRiwayat.innerHTML='<tr><td colspan="8" class="text-center text-muted">Tidak ada data pada rentang tanggal ini</td></tr>';
+    return;
+  }
+  $bodyRiwayat.innerHTML='';
+  const pal = paletteForBranch(currentBranch);
+
+  filtered.slice().reverse().forEach((r, idx)=>{
+    const cls=(r.status==='KURANG')?'kurang':(r.status==='LEBIH')?'lebih':'valid';
+    const rid = 'rinci_'+(Date.now())+'_'+idx;
+    const btn = `<button class="btn btn-sm btn-outline-secondary btnRinci" data-target="${rid}">Rincian</button>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.tgl}</td><td>${r.user}</td><td>${r.akun}</td>
+      <td class="num">${toRp(r.sistem)}</td><td class="num">${toRp(r.manual)}</td>
+      <td class="num">${toRp(r.selisih)}</td><td><span class="status ${cls}">${r.status}</span></td>
+      <td>${(r.ket||'')}${(Array.isArray(r.rincian)&&r.rincian.length? ' '+btn : '')}</td>`;
+    $bodyRiwayat.appendChild(tr);
+
+    if(Array.isArray(r.rincian) && r.rincian.length){
+      const tr2=document.createElement('tr');
+      tr2.className='rinci-row';
+      tr2.style.display='none';
+      tr2.id = rid;
+      const inner = `
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" style="background:rgba(148,163,184,.06)">
+            <thead style="background:${pal.bg};color:${pal.fg}">
+              <tr>
+                <th style="width:28%">Akun</th>
+                <th class="text-end" style="width:14%">Sistem</th>
+                <th class="text-end" style="width:14%">Manual</th>
+                <th class="text-end" style="width:14%">Selisih</th>
+                <th style="width:12%">Status</th>
+                <th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${r.rincian.map(d=>{
+                const c=(d.status==='KURANG')?'kurang':(d.status==='LEBIH')?'lebih':'valid';
+                return `<tr>
+                  <td>${d.nama}</td>
+                  <td class="num">${toRp(d.sistem)}</td>
+                  <td class="num">${toRp(d.manual)}</td>
+                  <td class="num">${toRp(Math.abs(d.selisih||0))}</td>
+                  <td><span class="status ${c}">${d.status}</span></td>
+                  <td>${d.ket||''}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      tr2.innerHTML = `<td colspan="8">${inner}</td>`;
+      $bodyRiwayat.appendChild(tr2);
+    }
+  });
+}
+
+/* Toggle collapse rincian */
+document.getElementById('tblRiwayat')?.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.btnRinci');
+  if(!btn) return;
+  const id = btn.dataset.target;
+  const row = document.getElementById(id);
+  if(!row) return;
+  const isHidden = getComputedStyle(row).display==='none';
+  row.style.display = isHidden ? '' : 'none';
+  btn.textContent = isHidden ? 'Tutup rincian' : 'Rincian';
+});
+
+/* Clear Riwayat (per cabang, OWNER saja terlihat via CSS owner-only) */
+document.getElementById('btnClearRiwayat').addEventListener('click', ()=>{
+  if(!isOwner){ return; }
+  if(!confirm(`Hapus semua riwayat saldo real untuk cabang "${currentBranch}"?`)) return;
+  localStorage.removeItem(keyFor(RIW_KEY_BASE, currentBranch));
+  renderRiwayat();
+  alert('Riwayat sudah dihapus.');
+});
+
+/* ====== LOGOUT handler ====== */
+document.getElementById('logoutLink')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  try{
+    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(EXP_KEY);
+  }catch{}
+  location.href = LOGIN_PAGE;
+});
+
+/* ======== KPI: Ambil dari Transaksi Mini ATM ======== */
+/* Mengacu ke struktur & rumus pada halaman transaksi. :contentReference[oaicite:1]{index=1} */
+function loadTrans(branch){
+  // baca per-cabang dulu, jika kosong fallback global (kompatibel dengan file transaksi)
+  return ls(keyFor(LSK_TRANS, branch)) || ls(LSK_TRANS) || [];
+}
+function getDateRangeEndInclusive(toStr){
+  if(!toStr) return null;
+  const d=parseDateInput(toStr);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999);
+}
+function getTransFiltered(){
+  const list = loadTrans(currentBranch);
+  const {from,to}=getDateFilter(currentBranch);
+  const dFrom=parseDateInput(from);
+  const dToEnd=getDateRangeEndInclusive(to);
+
+  return list.filter(t=>{
+    if(t.deleted) return false; // total transaksi = yang tidak terhapus
+    const at = t?.at ? new Date(t.at) : null;
+    if(at && dFrom && at<dFrom) return false;
+    if(at && dToEnd && at>dToEnd) return false;
+    return true;
+  });
+}
+function renderKPI(){
+  const list = getTransFiltered();
+  let tf=0, tr=0, om=0, pf=0, ab=0, total=0;
+
+  list.forEach(t=>{
+    total++;
+    if(t.jenis==='Transfer'){
+      tf += t.nominal||0;
+      ab += t.admBank||0;
+      om += t.admLuar||0;
+      pf += (t.admLuar||0) - (t.admBank||0);
+    }
+    if(t.jenis==='Tarik Tunai'){
+      tr += t.nominal||0;
+      om += (t.admLuar||0) + (t.admDalam||0);
+      pf += (t.admLuar||0) + (t.admDalam||0);
+    }
+    if(t.jenis==='Pulsa'){
+      om += t.jual||0;
+      pf += (t.jual||0) - (t.modal||0);
+    }
+    if(t.jenis==='Jasa ATM'){
+      om += t.admLuar||0;
+      pf += t.admLuar||0;
+    }
+  });
+
+  const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = toRp(val); };
+  set('kpiOmset', om);
+  set('kpiTransfer', tf);
+  set('kpiTarik', tr);
+  set('kpiAdmBank', ab);
+  if(isOwner){ set('kpiProfit', pf); }
+  const elTot=document.getElementById('kpiTotal'); if(elTot) elTot.textContent = (total||0).toLocaleString('id-ID');
+}
+
+/* ===== Init ===== */
+function firstInit(){
+  renderAkun();
+  renderRiwayat();
+  renderKPI();   // render KPI saat load
+}
+firstInit();
+</script>
+<script>
+/* === Global Role + Nav Utilities (injected) === */
+(function(){
+  const AUTH_KEY='amko.auth', EXP_KEY='amko.auth.exp';
+  function getSession(){
+    try{ return JSON.parse(localStorage.getItem(AUTH_KEY)||'null') }catch(e){ return null }
+  }
+  const session = getSession();
+  const role = (session?.role||'').toLowerCase();
+  document.body.dataset.role = role || '';
+  document.body.classList.toggle('owner', role==='owner');
+  document.body.classList.toggle('not-owner', role!=='owner');
+
+  // Show login name if placeholder exists
+  try{
+    const u = session?.username || '—';
+    const el = document.getElementById('currentUser'); if(el) el.textContent = u;
+  }catch(e){}
+
+  // Logout link
+  try{
+    document.getElementById('logoutLink')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(EXP_KEY);
+      location.href = 'login.html';
+    });
+  }catch(e){}
+
+  // Active menu highlight (safe)
+  (function fixActiveNav(){
+    try{
+      const path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+      document.querySelectorAll('.menu .item').forEach(a=>{
+        const href = (a.getAttribute('href')||'').split('/').pop().toLowerCase();
+        a.classList.toggle('active', href===path);
+      });
+    }catch(e){}
+  })();
+
+  // Non-owner: ensure initial saldo exists; if not, force to input-saldo-awal
+  function needInitialSaldo(){
+    try{
+      // Determine branch for user
+      const BR_KEY='amko.branches';
+      const USERS_KEY='amko.users';
+      const ACC_BASE='akun';
+      let branches = []; try{ branches = JSON.parse(localStorage.getItem(BR_KEY)||'[]') }catch(_){}
+      if(!Array.isArray(branches) || !branches.length) branches=['AMKO 18'];
+      let users=[]; try{ users = JSON.parse(localStorage.getItem(USERS_KEY)||'[]') }catch(_){}
+      const me = users.find(u => (u.username||'').toLowerCase()===(session?.username||'').toLowerCase());
+      const myBranch = me?.branch || branches[0];
+      const key = myBranch ? `${ACC_BASE}@${myBranch}` : ACC_BASE;
+      let arr = null; try{ arr = JSON.parse(localStorage.getItem(key)||'null') }catch(_){}
+      return !Array.isArray(arr) || arr.length===0;
+    }catch(e){ return true }
+  }
+
+  // Apply redirect rule on pages except login & input-saldo-awal
+  const page = (location.pathname.split('/').pop()||'').toLowerCase();
+  const bypass = ['login.html','input-saldo-awal.html','master-saldo-akun.html','manajemen-pengguna.html'];
+  if(role && role!=='owner' && !bypass.includes(page)){
+    if(needInitialSaldo()){
+      if(page!=='input-saldo-awal.html'){
+        // Save where the user tried to go, for after-completion bounce
+        sessionStorage.setItem('amko.next', page || 'transaksi-mini-atm.html');
+        location.replace('master-saldo-akun.html');
+      }
+    }
+  }
+})();
+</script>
+
+<script>
+document.querySelectorAll('#mobileOpen').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.add('open'));
+});
+document.querySelectorAll('#mobileClose').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
+});
+</script>
+
+<script>
+  function amkoLogout(){
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    window.location.replace('index.html');
+  }
+</script>
+<script src="amko-sync.config.js"></script>
+<script src="amko-sync.js"></script>
+<script>window.amkoSync && amkoSync.auto && amkoSync.auto();</script>
+</body>
+</html>

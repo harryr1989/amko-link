@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base href=\"./\">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AMKO — Dashboard (Owner)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+  :root{
+    --bg:#F8FAFC;--panel:#FFFFFF;--text:#0F172A;--muted:#475569;
+    --brand:#2563EB;--hover:#F1F5F9;--border:#E2E8F0;
+    --shadow:0 6px 24px rgba(2,6,23,.06),0 2px 8px rgba(2,6,23,.05);
+
+    --hdr-bg: rgba(37,99,235,.10);
+    --hdr-text: inherit;
+    --hdr-border: #E2E8F0;
+
+    --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0;
+
+    --kpi-bg: rgba(37,99,235,.06);
+    --kpi-border: rgba(37,99,235,.25);
+    --kpi-text: inherit;
+
+    --good:#16A34A; --warn:#F59E0B; --bad:#DC2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  a{color:inherit;text-decoration:none}
+
+  .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh;transition:grid-template-columns .25s ease}
+  .sidebar{position:sticky;top:0;height:100vh;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:12px;padding:14px;box-shadow:var(--shadow);z-index:10;overflow-y:auto}
+  .brand{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:linear-gradient(135deg,var(--panel),rgba(37,99,235,.08))}
+  .brand .logo{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--brand);color:#fff;font-weight:800}
+  .brand .title{font-weight:700}
+
+  .toolbar{display:flex;gap:8px}
+  .btnx{padding:9px 12px;border:1px solid var(--border);background:var(--panel);border-radius:10px;cursor:pointer;color:var(--text)}
+  .btnx:hover{background:var(--hover)}
+  .mobile-toggle{display:none}
+
+  .search{position:relative}
+  .search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:12px;background:transparent;color:var(--text);outline:none}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6}
+  .section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 10px;margin-top:6px}
+
+  .menu{display:flex;flex-direction:column;gap:4px}
+  .item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:1px solid transparent;cursor:pointer}
+  .item:hover{background:var(--hover);border-color:var(--border)}
+  .item.active{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.25)}
+  .owner-only{display:none}
+  body.owner .owner-only{display:flex}
+
+  .topbar{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:10px 14px;z-index:1}
+  .chip{font-size:12px;color:var(--muted)}
+  .content{padding:18px;display:grid;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+
+  @media (max-width:960px){
+    .app{grid-template-columns:1fr}
+    .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .2s;width:260px}
+    .sidebar.open{transform:none}
+    .mobile-toggle{display:inline-flex}
+  }
+  .collapse .label{display:none}
+  .collapse .app{grid-template-columns:72px 1fr}
+  .collapse .sidebar{padding:14px 10px}
+  .collapse .search,.collapse .section{display:none}
+  .collapse .item{justify-content:center}
+
+  .filters{display:flex;flex-wrap:wrap;gap:10px}
+  .filters .form-label{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .filters .form-control, .filters .form-select{padding:.45rem .6rem;font-size:13px}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .stat{ border:1px solid var(--kpi-border); background: var(--kpi-bg); border-radius:12px; padding:12px }
+  .stat .tit{font-size:12px;color:var(--muted)}
+  .stat .val{font-size:20px;font-weight:800;color:var(--kpi-text)}
+  .delta{font-size:12px}
+  .delta.up{color:var(--good)} .delta.down{color:var(--bad)}
+
+  .bars{display:flex;align-items:flex-end;gap:6px;height:96px}
+  .bar{width:18px;background:rgba(37,99,235,.75);border-radius:6px 6px 0 0}
+  .bar.muted{background:rgba(203,213,225,.9)}
+
+  table{width:100%;border-collapse:separate;border-spacing:0}
+  thead th{background:var(--hdr-bg)!important;color:var(--hdr-text)!important;border-top:1px solid var(--hdr-border)!important}
+  th,td{padding:8px 10px;border-top:1px solid var(--border)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+  .branch-chip{
+    font-size:12px; padding:4px 10px; border-radius:999px;
+    border:1px solid var(--chip-border); background:var(--chip-bg); color:var(--chip-fg);
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .branch-chip .dot{
+    width:8px;height:8px;border-radius:50%;
+    background: currentColor; opacity:.9;
+    box-shadow:0 0 0 3px rgba(0,0,0,.06);
+  }
+
+  .qa{display:flex;gap:8px;flex-wrap:wrap}
+  .qa .btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:.5rem .8rem}
+  .qa .btn:hover{box-shadow:0 8px 20px rgba(2,6,23,.08)}
+
+  /* Detail row style */
+  .detail-wrap{background:#F8FAFF;border:1px dashed var(--border);border-radius:12px;padding:12px}
+  .detail-title{font-weight:700;font-size:13px;color:#334155;margin-bottom:6px}
+  .mini-table{width:100%;font-size:12.5px}
+  .mini-table th,.mini-table td{padding:6px 8px;border-top:1px solid var(--border)}
+  /* Smooth collapse in table rows */
+  table .collapsing{transition:height .25s ease} 
+</style>
+
+<style>
+/* ================= AMKO UI KIT v1 (Global Consistency) ================= */
+:root{
+  --font-base: 14px;
+  --line-base: 1.55;
+  --fz-chip: 12px;
+  --fz-label: 12.5px;
+  --fz-input: 13px;
+  --fz-btn: 13px;
+  --ctrl-h: 40px;
+  --pad-input-x: 12px;
+  --pad-btn-y: .5rem;
+  --pad-btn-x: .7rem;
+  --tbl-pad-y: 9px;
+  --tbl-pad-x: 10px;
+  --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0;
+}
+body{ font: var(--font-base)/var(--line-base) system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+label, .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+input.form-control, .form-control,
+select.form-select, .form-select,
+.control, select{
+  height: var(--ctrl-h) !important;
+  padding: 0 var(--pad-input-x) !important;
+  font-size: var(--fz-input) !important;
+  line-height: 1.3 !important;
+}
+.flt-wrap .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+.flt-wrap .form-control, .flt-wrap .form-select{
+  padding: .45rem .6rem !important;
+  font-size: var(--fz-input) !important;
+  height: var(--ctrl-h) !important;
+}
+.btn, .btnx{
+  font-size: var(--fz-btn) !important;
+  height: var(--ctrl-h) !important;
+  padding: var(--pad-btn-y) var(--pad-btn-x) !important;
+  border-radius: 10px !important;
+}
+.btn-icon{ width: 36px; height: 36px; border-radius: 8px; }
+.branch-chip{
+  font-size: var(--fz-chip) !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--chip-border) !important;
+  background: var(--chip-bg) !important;
+  color: var(--chip-fg) !important;
+  border-radius: 999px !important;
+}
+table{ width:100%; border-collapse: separate; border-spacing: 0; }
+th, td{ padding: var(--tbl-pad-y) var(--tbl-pad-x) !important; }
+td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+thead th{ position: sticky; top: 0; z-index: 1; }
+.content{ padding: 14px !important; gap: 12px !important; }
+.card{ border-radius: 14px !important; padding: 14px !important; }
+.filters, .filter-grid, .hdr-actions, .branchbar .d-flex{
+  display: flex; flex-wrap: wrap; gap: 8px !important;
+}
+.filter-grid > *{ min-width: 160px; }
+.table-responsive, .table-wrap{ overflow: auto !important; }
+table.minwide{ min-width: 720px; }
+@media (max-width: 960px){
+  .app{ grid-template-columns: 1fr !important; }
+  .sidebar{ position: fixed; left:0; top:0; width:260px; transform: translateX(-100%); transition: transform .2s; z-index: 20; }
+  .sidebar.open{ transform: none; }
+  .mobile-toggle{ display: inline-flex !important; }
+  .content{ padding: 12px !important; }
+}
+h3{ font-size: 18px; margin: 0; }
+h4{ font-size: 16px; margin: 0; }
+h5{ font-size: 15px; margin: 0; }
+small,.form-text{ font-size: 12px; }
+</style>
+<style>
+/* Rotate caret button when section is open */
+#tblBranchWrap .toggle-rot{
+  width:32px !important; height:32px !important; padding:0 !important;
+  display:inline-grid; place-items:center;
+  transform-origin:50% 50%;
+  transition: transform .25s ease;
+}
+#tblBranchWrap .toggle-rot[aria-expanded="true"]{ transform: rotate(180deg); }
+</style>
+</head>
+<body>
+<div id="root" class="app">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar" aria-label="Sidebar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="title">AMKO Panel</div>
+        <div style="font-size:12px;color:var(--muted)">Mini ATM</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="collapseBtn" class="btnx" title="Kecilkan / Besarkan Sidebar">⟷</button>
+      <button id="mobileOpen" class="btnx mobile-toggle" title="Tutup">✕</button>
+    </div>
+
+    <div class="section">Menu</div>
+    <nav class="menu">
+      <a class="item active owner-only" href="dashboard.html"><span class="label">📊 Dashboard</span></a>
+      <a class="item" href="saldo-real.html"><span class="label">📑 Saldo Real</span></a>
+      <a class="item" href="master-saldo-akun.html"><span class="label">💰 Master Akun Saldo</span></a>
+      <a class="item" href="mutasi-saldo.html"><span class="label">🔄 Mutasi Saldo</span></a>
+      <a class="item" href="transaksi-mini-atm.html"><span class="label">🏧 Transaksi Mini ATM</span></a>
+      <a class="item owner-only" href="manajemen-pengguna.html"><span class="label">👥 Manajemen Pengguna</span></a>
+      <a class="item" href="#" id="logoutLink"><span class="label">🚪 Logout</span></a>
+    </nav>
+
+    <div class="section">Info</div>
+    <div style="font-size:12px;color:var(--muted);padding:8px 10px;border:1px dashed var(--border);border-radius:10px">
+      Login: <strong id="currentUser">—</strong>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <header class="topbar">
+      <strong>Dashboard Owner</strong>
+      <span class="chip">Hari ini: <span id="today"></span></span>
+    </header>
+
+    <section class="content">
+      <!-- FILTERS -->
+      <div class="card">
+        <div class="filters">
+          <div>
+            <label class="form-label">Dari Tanggal</label>
+            <input type="date" id="fStart" class="form-control" />
+          </div>
+          <div>
+            <label class="form-label">Sampai Tanggal</label>
+            <input type="date" id="fEnd" class="form-control" />
+          </div>
+          <div>
+            <label class="form-label">Cabang</label>
+            <select id="fBranch" class="form-select">
+              <option value="__ALL__">Semua Cabang</option>
+            </select>
+          </div>
+          <div style="align-self:end">
+            <button id="btnApply" class="btn btn-primary">Terapkan</button>
+            <button id="btnToday" class="btn btn-outline-secondary">Hari Ini</button>
+            <button id="btn7d" class="btn btn-outline-secondary">7 Hari</button>
+            <button id="btn30d" class="btn btn-outline-secondary">30 Hari</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div class="card">
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="tit">Omset (Rentang)</div>
+            <div class="val" id="kpiOmset">Rp 0</div>
+            <div class="delta" id="kpiOmsetDelta">—</div>
+          </div>
+          <div class="stat">
+            <div class="tit">Jumlah Transaksi (Rentang)</div>
+            <div class="val" id="kpiCount">0</div>
+            <div class="delta" id="kpiCountDelta">—</div>
+          </div>
+          <div class="stat">
+            <div class="tit">Profit / Admin Fee (Rentang)</div>
+            <div class="val" id="kpiProfit">Rp 0</div>
+            <div class="delta" id="kpiProfitNote">—</div>
+          </div>
+          <div class="stat">
+            <div class="tit">Total Saldo Real</div>
+            <div class="val" id="kpiSaldoTotal">Rp 0</div>
+            <div class="delta" id="kpiSaldoBreak">Cash / Rek / Server Pulsa</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tren & Distribusi -->
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Tren Omset (7 titik terakhir)</strong>
+              <span class="text-muted" style="font-size:12px" id="trendRange">—</span>
+            </div>
+            <div id="trendBars" class="bars" aria-label="Grafik batang omset"></div>
+            <div class="d-flex justify-content-between mt-2" id="trendLabels" style="font-size:12px;color:var(--muted)"></div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-5 d-none">
+          <div class="card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Distribusi Saldo</strong>
+              <span class="text-muted" style="font-size:12px" id="distScope">Semua Cabang</span>
+            </div>
+            <div class="row g-2">
+              <div class="col">
+                <div class="stat">
+                  <div class="tit">Cash</div>
+                  <div class="val" id="distCash">Rp 0</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="stat">
+                  <div class="tit">Rekening</div>
+                  <div class="val" id="distRek">Rp 0</div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="stat">
+                  <div class="tit">Server Pulsa</div>
+                  <div class="val" id="distSrv">Rp 0</div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 text-muted" style="font-size:12px">Sumber: Master Akun Saldo (jenis = Cash / Rekening / Server Pulsa)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaksi Terbaru (full width) -->
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Transaksi Terbaru</strong>
+              <a href="transaksi-mini-atm.html" class="btn btn-sm btn-outline-primary">🏧 Buka Transaksi</a>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead><tr>
+                  <th>Waktu</th><th>Cabang</th><th>Jenis</th><th class="text-end">Nominal</th><th>User</th>
+                </tr></thead>
+                <tbody id="tblTx"><tr><td colspan="5" class="text-muted">—</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Cabang (Ringkas) + Rincian Toggle -->
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Info Cabang (Ringkas)</strong>
+              <span class="text-muted" style="font-size:12px">Saldo & Omset (Rentang) — klik 🔽 untuk rincian</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm" id="tblBranchWrap">
+                <thead><tr>
+                  <th style="width:48px"></th>
+                  <th>Cabang</th>
+                  <th class="text-end">Saldo Cash</th>
+                  <th class="text-end">Saldo Rekening</th>
+                  <th class="text-end">Saldo Server Pulsa</th>
+                  <th class="text-end">Omset (Rentang)</th>
+                </tr></thead>
+                <tbody id="tblBranch"><tr><td colspan="6" class="text-muted">—</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  /* ===== Keys ===== */
+  const AUTH_KEY='amko.auth', EXP_KEY=AUTH_KEY+':exp';
+  const USERS_KEY='amko.users';
+  const BR_KEY='amko.branches';
+  const ACC_BASE='akun';
+
+  /* ===== Utils ===== */
+  const $=(s,el=document)=>el.querySelector(s);
+  const $$=(s,el=document)=>[...el.querySelectorAll(s)];
+  const fmtIDR=(n)=>'Rp '+(Number(n||0)).toLocaleString('id-ID');
+  const todayD = new Date();
+  const startOfDay=(d)=>new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,0,0,0);
+  const endOfDay=(d)=>new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59,999);
+  function parseDateInput(v, fallback){ const d=new Date(v); return isNaN(d)? fallback : d; }
+
+  function getSession(){ try{ return JSON.parse(localStorage.getItem(AUTH_KEY)||'null') }catch{return null} }
+  function isOwner(){ const s=getSession(); return ((s?.role||'').toLowerCase()==='owner'); }
+  function getBranches(){
+    try{ const bs=JSON.parse(localStorage.getItem(BR_KEY)||'[]'); if(Array.isArray(bs)&&bs.length) return bs; }catch{}
+    const keys=Object.keys(localStorage).filter(k=>k.startsWith(ACC_BASE+'@'));
+    const set=new Set(keys.map(k=>k.split('@')[1]).filter(Boolean));
+    return set.size? [...set]: ['AMKO 18','AMKO 25'];
+  }
+  function accKey(branch){ return branch? `${ACC_BASE}@${branch}` : ACC_BASE }
+  function loadMaster(branch){ try{ return JSON.parse(localStorage.getItem(accKey(branch))||'[]') }catch{return []} }
+
+  /* ===== Branch → Theme mapping (chip warna khusus) ===== */
+  const BR_THEME = {
+    'AMKO 18': { chipBg:'#DBEAFE', chipBr:'#93C5FD', chipFg:'#1E3A8A' },
+    'AMKO 25': { chipBg:'#DCFCE7', chipBr:'#86EFAC', chipFg:'#065F46' },
+  };
+  function styleBranchChip(el, branch){
+    const t = BR_THEME[branch] || { chipBg:'#E2E8F0', chipBr:'#CBD5E1', chipFg:'#1F2937' };
+    el.style.setProperty('--chip-bg', t.chipBg);
+    el.style.setProperty('--chip-border', t.chipBr);
+    el.style.setProperty('--chip-fg', t.chipFg);
+    el.style.color = t.chipFg;
+    el.style.background = t.chipBg;
+    el.style.borderColor = t.chipBr;
+  }
+
+  /* ===== Load transaksi (kompatibel dengan halaman Transaksi) ===== */
+  function loadTransactionsAll(){
+    const branches=getBranches();
+    const results=[];
+    const guessKeys=(b)=>[
+      `transMini@${b}`, 'transMini',
+      `transaksi@${b}`, `trx@${b}`, `mutasi@${b}`,
+      `transaksi`, `trx`, `mutasi`
+    ];
+    branches.forEach(b=>{
+      guessKeys(b).forEach(key=>{
+        try{
+          const arr=JSON.parse(localStorage.getItem(key)||'[]');
+          if(Array.isArray(arr)){
+            arr.forEach(x=>{
+              const tsRaw = x.at || x.ts || x.time || x.t || x.created_at || x.date || x.tanggal || Date.now();
+              const ts = new Date(tsRaw);
+              const nominal = Number(x.nominal || x.amount || x.total || x.omset || 0);
+              let adm = 0; const jenis = (x.jenis || x.type || '').toString();
+              const al = Number(x.admLuar||0), ad = Number(x.admDalam||0), ab = Number(x.admBank||0);
+              const jual = Number(x.jual||0), modal = Number(x.modal||0);
+              if (jenis.toLowerCase()==='pulsa'){ adm = (jual>0 || modal>0) ? (jual - modal) : al; }
+              else { adm = al + ad - ab; }
+              if (x.admin!=null || x.adm!=null || x.fee!=null || x.biaya_admin!=null){
+                const legacy = Number(x.admin || x.adm || x.fee || x.biaya_admin || 0);
+                if (!isNaN(legacy) && legacy!==0) adm = legacy;
+              }
+              const deleted = !!x.deleted;
+              const user = x.user || x.byUser || x.operator || '-';
+              const branch = x.branch || b || '-';
+              results.push({ts, nominal, adm, jenis, user, branch, deleted, raw:x});
+            });
+          }
+        }catch{}
+      });
+    });
+    results.sort((a,b)=> b.ts - a.ts);
+    return results;
+  }
+
+  /* ===== Aggregations ===== */
+  function filterByRangeAndBranch(trx, sDate, eDate, branchSel){
+    return trx.filter(t=>{
+      const inRange = (t.ts>=startOfDay(sDate) && t.ts<=endOfDay(eDate));
+      const inBranch = (branchSel==='__ALL__' || t.branch===branchSel);
+      const notDeleted = !t.deleted; // abaikan yang terhapus
+      return inRange && inBranch && notDeleted;
+    });
+  }
+  function omsetSumCount(trx){ 
+    return trx.reduce((o,t)=>{ o.sum+=Number(t.nominal||0); o.count++; return o; }, {sum:0,count:0}); 
+  }
+  function profitSum(trx){
+    return trx.reduce((p,t)=> p + Number(t.adm||0), 0);
+  }
+  function distribusiSaldo(branchSel){
+    const branches = (branchSel==='__ALL__') ? getBranches() : [branchSel];
+    let cash=0, rek=0, srv=0;
+    branches.forEach(b=>{
+      const m=loadMaster(b);
+      m.forEach(a=>{
+        const j=(a.jenis||'Cash').toLowerCase();
+        const n=(a.nama||'').toLowerCase();
+        const v=Number(a.saldo||0);
+        if(j.includes('server') || n.includes('server')) srv+=v; // "Server Pulsa"
+        else if(j.includes('rek') || j.includes('rekening') || n.includes('bri') || n.includes('bca') || n.includes('bni') || n.includes('mandiri') || n.includes('jago')) rek+=v;
+        else cash+=v;
+      });
+    });
+    return {cash, rek, srv, all: cash+rek+srv};
+  }
+  function omsetLastNPoints(trx, n=7, sDate, eDate){
+    const points=[];
+    const end=endOfDay(eDate);
+    for(let i=n-1;i>=0;i--){
+      const d=new Date(end); d.setDate(end.getDate()-i);
+      const s=startOfDay(d), e=endOfDay(d);
+      const sum = trx.reduce((acc,t)=> (t.ts>=s && t.ts<=e) ? acc+Number(t.nominal||0) : acc, 0);
+      points.push({date:new Date(s), sum});
+    }
+    return points;
+  }
+
+  /* ===== Renderers ===== */
+  function renderKPI(trxRange, branchSel){
+    const {sum, count} = omsetSumCount(trxRange);
+    const prf = profitSum(trxRange);
+    $('#kpiOmset').textContent = fmtIDR(sum);
+    $('#kpiCount').textContent = String(count);
+    $('#kpiProfit').textContent = fmtIDR(prf);
+    $('#kpiProfitNote').textContent = 'Akumulasi fee dalam rentang terpilih';
+
+    const dist = distribusiSaldo(branchSel);
+    $('#kpiSaldoTotal').textContent = fmtIDR(dist.all);
+    $('#kpiSaldoBreak').textContent = `${fmtIDR(dist.cash)} / ${fmtIDR(dist.rek)} / ${fmtIDR(dist.srv)}`;
+
+    // Delta sederhana
+    const rangeDays = Math.max(1, Math.round( (state.eDate - state.sDate) / (1000*60*60*24) ) + 1 );
+    const prevStart = new Date(state.sDate); prevStart.setDate(prevStart.getDate()-rangeDays);
+    const prevEnd   = new Date(state.eDate); prevEnd.setDate(prevEnd.getDate()-rangeDays);
+    const trxPrev = filterByRangeAndBranch(state.trxAll, prevStart, prevEnd, state.branchSel);
+    const {sum:sumPrev, count:countPrev} = omsetSumCount(trxPrev);
+
+    const dOmset = sum - sumPrev;
+    const dCount = count - countPrev;
+    $('#kpiOmsetDelta').innerHTML = (sumPrev>0)
+      ? `<span class="delta ${dOmset>=0?'up':'down'}">${dOmset>=0?'▲':'▼'} ${fmtIDR(Math.abs(dOmset))} vs periode lalu</span>`
+      : `<span class="delta">—</span>`;
+    $('#kpiCountDelta').innerHTML = (countPrev>0)
+      ? `<span class="delta ${dCount>=0?'up':'down'}">${dCount>=0?'▲':'▼'} ${Math.abs(dCount)} trx vs periode lalu</span>`
+      : `<span class="delta">—</span>`;
+  }
+
+  function renderTrend(trxRange){
+    const data=omsetLastNPoints(trxRange,7,state.sDate,state.eDate);
+    const max = Math.max(1,...data.map(d=>d.sum));
+    const bars = data.map(d=>{
+      const h = Math.round((d.sum/max)*100);
+      return `<div class="bar" style="height:${Math.max(6,h)}%"></div>`;
+    }).join('');
+    $('#trendBars').innerHTML = bars;
+    const labels = data.map(d=> `<span>${String(d.date.getDate()).padStart(2,'0')}</span>`).join('');
+    $('#trendLabels').innerHTML = labels;
+    $('#trendRange').textContent = 
+      state.sDate.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}) + ' — ' + 
+      state.eDate.toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
+  }
+
+  function renderDistribusi(branchSel){
+    const s=distribusiSaldo(branchSel);
+    $('#distCash').textContent = fmtIDR(s.cash);
+    $('#distRek').textContent  = fmtIDR(s.rek);
+    $('#distSrv').textContent  = fmtIDR(s.srv); // Label kartu sudah "Server Pulsa"
+    $('#distScope').textContent = (branchSel==='__ALL__') ? 'Semua Cabang' : branchSel;
+  }
+
+  function renderTx(trxRange){
+    const top = trxRange.slice(0,10);
+    const tb=$('#tblTx');
+    if(!tb) return;
+    if(!top.length){ tb.innerHTML = `<tr><td colspan="5" class="text-muted">Tidak ada transaksi pada rentang & cabang ini.</td></tr>`; return; }
+    tb.innerHTML = top.map(t=>{
+      const chip = `<span class="branch-chip"><span class="dot"></span><span>${t.branch||'-'}</span></span>`;
+      return `<tr>
+        <td>${t.ts.toLocaleString('id-ID')}</td>
+        <td>${chip}</td>
+        <td>${t.jenis||'-'}</td>
+        <td class="num">${fmtIDR(t.nominal||0)}</td>
+        <td>${t.user||'-'}</td>
+      </tr>`;
+    }).join('');
+
+    $$('#tblTx .branch-chip').forEach(chip=>{
+      const name = chip.innerText.trim();
+      styleBranchChip(chip, name);
+    });
+  }
+
+  function groupAccountsByJenis(m){
+    const g={ cash:[], rek:[], srv:[] };
+    m.forEach(a=>{
+      const j=(a.jenis||'Cash').toLowerCase();
+      const n=(a.nama||'').toLowerCase();
+      const row = { nama:a.nama||'-', jenis:(a.jenis||'Cash'), saldo:Number(a.saldo||0) };
+      if(j.includes('server') || n.includes('server')) g.srv.push(row);
+      else if(j.includes('rek') || j.includes('rekening') || n.includes('bri') || n.includes('bca') || n.includes('bni') || n.includes('mandiri') || n.includes('jago')) g.rek.push(row);
+      else g.cash.push(row);
+    });
+    return g;
+  }
+
+  function renderBranchInfo(trxRange){
+    const branches = (state.branchSel==='__ALL__') ? getBranches() : [state.branchSel];
+    const tb=$('#tblBranch');
+    if(!tb) return;
+    const rows = branches.map((b,idx)=>{
+      // saldo per cabang
+      const m=loadMaster(b);
+      let cash=0,rek=0,srv=0;
+      m.forEach(a=>{
+        const j=(a.jenis||'Cash').toLowerCase();
+        const n=(a.nama||'').toLowerCase();
+        const v=Number(a.saldo||0);
+        if(j.includes('server') || n.includes('server')) srv+=v; else if(j.includes('rek') || j.includes('rekening') || n.includes('bri') || n.includes('bca') || n.includes('bni') || n.includes('mandiri') || n.includes('jago')) rek+=v; else cash+=v;
+      });
+      // omset rentang per cabang
+      let omset=0;
+      trxRange.forEach(t=>{ if(t.branch===b) omset += Number(t.nominal||0); });
+
+      const chip = `<span class="branch-chip"><span class="dot"></span><span>${b}</span></span>`;
+      const detId = `det-${idx}`;
+      const headRow = `<tr>
+        <td class="text-center" style="vertical-align:middle">
+          <button class="btn btn-sm btn-outline-secondary toggle-rot" type="button" data-bs-toggle="collapse" data-bs-target="#${detId}" aria-expanded="false" aria-controls="${detId}">🔽</button>
+        </td>
+        <td>${chip}</td>
+        <td class="num">${fmtIDR(cash)}</td>
+        <td class="num">${fmtIDR(rek)}</td>
+        <td class="num">${fmtIDR(srv)}</td>
+        <td class="num">${fmtIDR(omset)}</td>
+      </tr>`;
+
+      // detail content (akun per jenis)
+      const g = groupAccountsByJenis(m);
+      const mini = (title,list)=>{
+        if(!list.length) return '';
+        const rows=list.map(x=>`<tr><td>${x.nama}</td><td class="num">${fmtIDR(x.saldo)}</td></tr>`).join('');
+        return `<div class="col-12 col-md-4">
+          <div class="detail-title">${title}</div>
+          <div class="table-responsive">
+            <table class="mini-table">
+              <thead><tr><th>Nama Akun</th><th class="text-end">Saldo</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+      };
+      const detailRow = `<tr>
+        <td colspan="6" style="padding:0">
+          <div id="${detId}" class="collapse">
+            <div class="detail-wrap">
+              <div class="row g-3">
+                ${mini('Cash', g.cash)}
+                ${mini('Rekening', g.rek)}
+                ${mini('Server Pulsa', g.srv)}
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+      return headRow + detailRow;
+    }).join('');
+    tb.innerHTML = rows || `<tr><td colspan="6" class="text-muted">—</td></tr>`;
+
+    $$('#tblBranch .branch-chip').forEach(chip=>{
+      const name = chip.innerText.trim();
+      styleBranchChip(chip, name);
+    });
+  }
+
+  /* ===== Auth & Nav ===== */
+  function logout(){
+    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(EXP_KEY);
+    location.href='login.html';
+  }
+
+  /* ===== State & Init ===== */
+  const state = {
+    trxAll: [],
+    sDate: startOfDay(todayD),
+    eDate: endOfDay(todayD),
+    branchSel: '__ALL__'
+  };
+
+  function applyFilters(){
+    // Ambil nilai filter
+    const sVal = $('#fStart').value; const eVal = $('#fEnd').value;
+    const sDate = parseDateInput(sVal, state.sDate);
+    const eDate = parseDateInput(eVal, state.eDate);
+    state.sDate = startOfDay(sDate);
+    state.eDate = endOfDay(eDate);
+    state.branchSel = $('#fBranch').value || '__ALL__';
+
+    const trxRange = filterByRangeAndBranch(state.trxAll, state.sDate, state.eDate, state.branchSel);
+
+    renderKPI(trxRange, state.branchSel);
+    renderTrend(trxRange);
+    renderDistribusi(state.branchSel);
+    renderTx(trxRange);
+    renderBranchInfo(trxRange);
+  }
+
+  function setQuickRange(days){
+    const end = new Date(); // hari ini
+    const start = new Date(); start.setDate(end.getDate()-(days-1));
+    $('#fStart').value = start.toISOString().slice(0,10);
+    $('#fEnd').value   = end.toISOString().slice(0,10);
+    applyFilters();
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // Guard: owner only
+    const s=getSession();
+    if(!s){ location.replace('login.html'); return; }
+    if((s.role||'').toLowerCase()!=='owner'){ location.replace('transaksi-mini-atm.html'); return; }
+    document.body.classList.add('owner');
+    $('#currentUser').textContent = s.username || s.name || 'Owner';
+    $('#today').textContent = todayD.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+    // Sidebar
+    $('#collapseBtn')?.addEventListener('click', ()=> document.body.classList.toggle('collapse'));
+    $('#logoutLink')?.addEventListener('click', (e)=>{ e.preventDefault(); logout(); });
+
+    // Populate branches
+    const brSel = $('#fBranch');
+    getBranches().forEach(b=>{
+      const opt=document.createElement('option');
+      opt.value=b; opt.textContent=b;
+      brSel.appendChild(opt);
+    });
+
+    // Default range = 7 hari terakhir
+    const end = new Date(); const start = new Date(); start.setDate(end.getDate()-6);
+    $('#fStart').value = start.toISOString().slice(0,10);
+    $('#fEnd').value   = end.toISOString().slice(0,10);
+
+    // Load transaksi all
+    state.trxAll = loadTransactionsAll();
+
+    // Buttons
+    $('#btnApply').addEventListener('click', applyFilters);
+    $('#btnToday').addEventListener('click', ()=> setQuickRange(1));
+    $('#btn7d').addEventListener('click', ()=> setQuickRange(7));
+    $('#btn30d').addEventListener('click', ()=> setQuickRange(30));
+
+    // First render
+    applyFilters();
+  });
+})();
+</script>
+
+<script>
+document.querySelectorAll('#mobileOpen').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.add('open'));
+});
+document.querySelectorAll('#mobileClose').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
+});
+</script>
+
+<script>
+  function amkoLogout(){
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    window.location.replace('index.html');
+  }
+</script>
+<script src="amko-sync.config.js"></script>
+<script src="amko-sync.js"></script>
+<script>window.amkoSync && amkoSync.auto && amkoSync.auto();</script>
+</body>
+</html>

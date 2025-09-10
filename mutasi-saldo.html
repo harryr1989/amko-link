@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base href=\"./\">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AMKO — Mutasi Saldo</title>
+  <style>
+    :root{--bg:#F8FAFC;--panel:#FFFFFF;--text:#0F172A;--muted:#475569;--brand:#2563EB;--hover:#F1F5F9;--border:#E2E8F0;--shadow:0 6px 24px rgba(2,6,23,.06),0 2px 8px rgba(2,6,23,.05);--danger:#EF4444;--info:#0EA5E9;--success:#10B981}
+    .dark{--bg:#0B1220;--panel:#0F172A;--text:#E5E7EB;--muted:#94A3B8;--brand:#60A5FA;--hover:#111827;--border:#1F2937;--shadow:0 8px 32px rgba(0,0,0,.35)}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    a{color:inherit;text-decoration:none}
+
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh;transition:grid-template-columns .25s ease}
+    .sidebar{position:sticky;top:0;height:100vh;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:12px;padding:14px;box-shadow:var(--shadow);z-index:2;overflow-y:auto}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:linear-gradient(135deg,var(--panel),rgba(37,99,235,.08))}
+    .brand .logo{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--brand);color:#fff;font-weight:800}
+    .brand .title{font-weight:700}
+
+    .toolbar{display:flex;gap:8px}
+    .btnx{padding:9px 12px;border:1px solid var(--border);background:var(--panel);border-radius:10px;cursor:pointer;color:var(--text)}
+    .btnx:hover{background:var(--hover)}
+    .mobile-toggle{display:none}
+
+    .search{position:relative}
+    .search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:12px;background:transparent;color:var(--text);outline:none}
+    .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6}
+    .section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 10px;margin-top:6px}
+
+    .menu{display:flex;flex-direction:column;gap:4px}
+    .item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:1px solid transparent;cursor:pointer}
+    .item:hover{background:var(--hover);border-color:var(--border)}
+    .item.active{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.25)}
+    .owner-only{display:none}
+    body[data-role="owner"] .owner-only{display:flex}
+
+    .topbar{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:10px 14px;z-index:1}
+    .chip{font-size:12px;color:var(--muted)}
+    .content{padding:18px;display:grid;gap:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+
+    @media (max-width:960px){
+      .app{grid-template-columns:1fr}
+      .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .2s;width:260px}
+      .sidebar.open{transform:none}
+      .mobile-toggle{display:inline-flex}
+    }
+    .collapse .label{display:none}
+    .collapse .app{grid-template-columns:72px 1fr}
+    .collapse .sidebar{padding:14px 10px}
+    .collapse .search,.collapse .section{display:none}
+    .collapse .item{justify-content:center}
+
+    /* Form & tombol */
+    .btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer}
+    .btn:hover{box-shadow:0 8px 20px rgba(2,6,23,.08)}
+    .btn-success{background:var(--success);color:#fff;border-color:var(--success)}
+    .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+    .btn-info{background:var(--info);color:#fff;border-color:var(--info)}
+    .btn-primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .control, select{width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);outline:none}
+    .control:focus, select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.25);border-color:var(--brand)}
+    .helper{font-size:12px;color:var(--muted);margin-top:4px}
+
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+    .col-12{grid-column:span 12}
+    .col-6{grid-column:span 6}
+    .col-3{grid-column:span 3}
+    @media (max-width:960px){.col-6,.col-3{grid-column:span 12}}
+
+    /* Tabel */
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-top:1px solid var(--border)}
+    thead th{background:rgba(37,99,235,.08);text-align:left}
+    th[scope="col"]{font-weight:700}
+    .text-end{text-align:right}
+    .text-center{text-align:center}
+    .row-deleted{background:rgba(239,68,68,.08)}
+    .row-deleted td:not(:last-child){text-decoration:line-through}
+/* === GRIDLINES TABEL RIWAYAT (hanya tampilan garis) === */
+#tabelRiwayat{
+  border-collapse: separate;   /* biar garis rapi, tidak numpuk */
+  border-spacing: 0;
+}
+#tabelRiwayat th,
+#tabelRiwayat td{
+  border: 1px solid var(--border);   /* garis semua sisi */
+}
+
+/* header sedikit tegas */
+#tabelRiwayat thead th{
+  background: rgba(37,99,235,.08);
+  border-bottom: 2px solid var(--border);
+}
+
+/* hover baris opsional (boleh hapus kalau tak mau) */
+#tabelRiwayat tbody tr:hover td{
+  background: var(--hover);
+}
+
+/* baris soft delete tetap terbaca meski pakai gridlines */
+.row-deleted{
+  background: rgba(239,68,68,.08);
+}
+.row-deleted td:not(:last-child){
+  text-decoration: line-through;
+}
+
+
+/* Tambahan: garis semua sisi tabel */
+#tabelRiwayat{
+  border-collapse: separate;
+  border-spacing: 0;
+}
+#tabelRiwayat th,
+#tabelRiwayat td{
+  border: 1px solid var(--border);
+}
+#tabelRiwayat thead th{
+  background: rgba(37,99,235,.08);
+  border-bottom: 2px solid var(--border);
+}
+/* === Header tabel ikut warna chip cabang === */
+:root{
+  --thead-bg: rgba(37,99,235,.08); /* default fallback */
+  --thead-fg: inherit;
+  --thead-border: var(--border);
+}
+
+#tabelRiwayat thead th{
+  background: var(--thead-bg) !important;
+  color: var(--thead-fg) !important;
+  border-color: var(--thead-border) !important;
+}
+
+
+    /* Modal */
+    .modal-wrap{position:fixed;inset:0;display:none;place-items:center;background:rgba(2,6,23,.35);z-index:30}
+    .modal-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:0;min-width:min(520px,92%)}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px;border-bottom:1px solid var(--border)}
+    .modal-body{padding:14px}
+
+    /* Toast */
+    .toast{position:fixed;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow);display:none;align-items:center;gap:10px;z-index:50}
+
+    /* Filter + Pager */
+    .filter-grid{display:grid;gap:8px;align-items:end;grid-template-columns:repeat(7,minmax(120px,1fr))}
+    .filter-grid .form{display:flex;flex-direction:column;gap:4px}
+    .filter-grid label{font-size:12px;color:var(--muted)}
+    .pager{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:10px}
+    .pager .btn[disabled]{opacity:.5;cursor:not-allowed}
+    #pageInfo{font-size:12px;color:var(--muted)}
+
+    @media (max-width:1100px){.filter-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
+
+    .branch-chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--hover);color:var(--muted)}
+  
+/* === Patch: branch chip seragam menggunakan variabel --chip-* === */
+.branch-chip{
+  font-size:12px; padding:4px 10px; border-radius:999px;
+  border:1px solid var(--chip-border) !important;
+  background: var(--chip-bg) !important;
+  color: var(--chip-fg) !important;
+}
+</style>
+
+<style>
+/* ================= AMKO UI KIT v1 (Global Consistency) ================= */
+
+/* 1) Tipografi & spacing global (seragam) */
+:root{
+  --font-base: 14px;
+  --line-base: 1.55;
+  --fz-chip: 12px;
+  --fz-label: 12.5px;
+  --fz-input: 13px;
+  --fz-btn: 13px;
+  --ctrl-h: 40px;
+  --pad-input-x: 12px;
+  --pad-btn-y: .5rem;   /* ~8px */
+  --pad-btn-x: .7rem;   /* ~11px */
+  --tbl-pad-y: 9px;
+  --tbl-pad-x: 10px;
+
+  /* warna chip seragam */
+  --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0;
+}
+
+body{
+  font: var(--font-base)/var(--line-base) system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+/* 2) Form: input/select/label/filter seragam */
+label, .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+input.form-control, .form-control,
+select.form-select, .form-select,
+.control, select{
+  height: var(--ctrl-h) !important;
+  padding: 0 var(--pad-input-x) !important;
+  font-size: var(--fz-input) !important;
+  line-height: 1.3 !important;
+}
+
+/* “Filter wrapper” seragam */
+.flt-wrap .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+.flt-wrap .form-control, .flt-wrap .form-select{
+  padding: .45rem .6rem !important;
+  font-size: var(--fz-input) !important;
+  height: var(--ctrl-h) !important;
+}
+
+/* 3) Tombol seragam & tap target ramah jempol */
+.btn, .btnx{
+  font-size: var(--fz-btn) !important;
+  height: var(--ctrl-h) !important;
+  padding: var(--pad-btn-y) var(--pad-btn-x) !important;
+  border-radius: 10px !important;
+}
+.btn-icon{ width: 36px; height: 36px; border-radius: 8px; }
+
+/* 4) Chip/cabang seragam di semua halaman */
+.branch-chip{
+  font-size: var(--fz-chip) !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--chip-border) !important;
+  background: var(--chip-bg) !important;
+  color: var(--chip-fg) !important;
+  border-radius: 999px !important;
+}
+
+/* 5) Tabel: padding & numerik */
+table{ width:100%; border-collapse: separate; border-spacing: 0; }
+th, td{ padding: var(--tbl-pad-y) var(--tbl-pad-x) !important; }
+td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+
+/* Header tabel “ikut tema” default yang sudah ada */
+thead th{ position: sticky; top: 0; z-index: 1; }
+
+/* 6) Grid & kartu supaya rapi di HP */
+.content{ padding: 14px !important; gap: 12px !important; }
+.card{ border-radius: 14px !important; padding: 14px !important; }
+
+/* 7) Filter bar responsif → otomatis dua baris di layar sempit */
+.filters, .filter-grid, .hdr-actions, .branchbar .d-flex{
+  display: flex; flex-wrap: wrap; gap: 8px !important;
+}
+.filter-grid > *{ min-width: 160px; }
+
+/* 8) Tabel lebar → gulir horizontal aman di HP */
+.table-responsive, .table-wrap{ overflow: auto !important; }
+table.minwide{ min-width: 720px; }
+
+/* 9) Sidebar: breakpoint konsisten dan tombol mobile tampak */
+@media (max-width: 960px){
+  .app{ grid-template-columns: 1fr !important; }
+  .sidebar{ position: fixed; left:0; top:0; width:260px; transform: translateX(-100%); transition: transform .2s; z-index: 20; }
+  .sidebar.open{ transform: none; }
+  .mobile-toggle{ display: inline-flex !important; }
+  .content{ padding: 12px !important; }
+}
+
+/* 10) Judul/kop yang konsisten */
+h3{ font-size: 18px; margin: 0; }
+h4{ font-size: 16px; margin: 0; }
+h5{ font-size: 15px; margin: 0; }
+small,.form-text{ font-size: 12px; }
+</style>
+
+<style>
+/* Override agar filter Mutasi Saldo selaras Transaksi Mini ATM */
+.filter-grid label{
+  font-size: var(--fz-label) !important;
+  color: inherit !important;
+  font-weight: 500;
+}
+</style>
+</head>
+<body>
+<div id="root" class="app">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar" aria-label="Sidebar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="title">AMKO Panel</div>
+        <div style="font-size:12px;color:var(--muted)">Mini ATM</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="collapseBtn" class="btnx" title="Kecilkan / Besarkan Sidebar" aria-label="Kecilkan / Besarkan Sidebar">⟷</button>
+      <button id="themeBtn" class="btnx" title="Mode Terang/Gelap" aria-label="Mode Terang/Gelap">🌓</button>
+      <button id="mobileClose" class="btnx mobile-toggle" title="Tutup" aria-label="Tutup Sidebar">✕</button>
+    </div>
+
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input id="search" placeholder="Cari menu…"/ class="form-control">
+    </div>
+
+    <div class="section">Menu</div>
+<nav class="menu">
+  <a class="item owner-only" href="dashboard.html"><span class="label">📊 Dashboard</span></a>
+  <a class="item" href="saldo-real.html"><span class="label">📑 Saldo Real</span></a>
+  <a class="item" href="master-saldo-akun.html"><span class="label">💰 Master Akun Saldo</span></a>
+  <a class="item" href="mutasi-saldo.html"><span class="label">🔄 Mutasi Saldo</span></a>
+  <a class="item" href="transaksi-mini-atm.html"><span class="label">🏧 Transaksi Mini ATM</span></a>
+  <a class="item owner-only" href="manajemen-pengguna.html"><span class="label">👥 Manajemen Pengguna</span></a>
+  <a class="item" href="#" id="logoutLink"><span class="label">🚪 Logout</span></a>
+</nav>
+
+    <div class="section">Info</div>
+    <div style="font-size:12px;color:var(--muted);padding:8px 10px;border:1px dashed var(--border);border-radius:10px">
+      Login: <strong id="currentUser">—</strong><br/>Versi: <strong>v1.3 (Admin @ Pindah)</strong>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <header class="topbar">
+      <button id="mobileOpen" class="btnx mobile-toggle" title="Menu" aria-label="Buka Sidebar">☰</button>
+      <strong>Halaman <span>Mutasi Saldo</span></strong>
+      <span class="chip">Tanggal: <span id="today"></span></span>
+      <span class="chip" id="greeting"></span>
+    </header>
+
+    <section class="content">
+
+      <!-- Bar cabang: hanya OWNER -->
+      <div id="branchBar" class="card owner-only" style="align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label for="selBranch" class="muted form-label" style="font-size:13px">Cabang:</label>
+          <select id="selBranch" class=" form-control  form-select" style="width:220px"></select>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+          Mutasi Saldo
+          <span id="branchChip" class="branch-chip" title="Cabang aktif">—</span>
+        </h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-success" id="btnTambah" aria-label="Tambah Saldo">➕ Tambah</button>
+          <button class="btn btn-danger" id="btnKurang" aria-label="Kurang Saldo">➖ Kurang</button>
+          <button class="btn btn-info" id="btnPindah" aria-label="Pindah Saldo">🔄 Pindah</button>
+          <button class="btn" id="btnExport" aria-label="Export CSV (Filter)">⬇️ Export CSV (Filter)</button>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="card">
+        <div class="filter-grid">
+          <div class="form">
+            <label class="form-label">Tanggal Awal</label>
+            <input type="date" id="filterAwal" class=" form-control ">
+          </div>
+          <div class="form">
+            <label class="form-label">Tanggal Akhir</label>
+            <input type="date" id="filterAkhir" class=" form-control ">
+          </div>
+          <div class="form">
+            <label class="form-label">Akun</label>
+            <select id="filterAkun" class=" form-control  form-select"></select>
+          </div>
+          <div class="form">
+            <label class="form-label">Jenis</label>
+            <select id="filterJenis" class=" form-control  form-select">
+              <option value="">Semua</option>
+              <option>Tambah</option>
+              <option>Kurang</option>
+              <option>Pindah</option>
+            </select>
+          </div>
+          <div class="form">
+            <label class="form-label">User</label>
+            <select id="filterUser" class=" form-control  form-select"></select>
+          </div>
+          <div class="form">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary" id="btnCari">Terapkan</button>
+          </div>
+          <div class="form">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn" id="btnReset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel Riwayat -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <strong>📑 Daftar Riwayat Saldo</strong>
+          <small class="chip">Soft delete = baris merah, saldo di-rollback. Bisa <em>Undo</em> dalam 5 detik.</small>
+        </div>
+        <div style="margin-top:10px;overflow:auto">
+          <div class="table-responsive"><table id="tabelRiwayat" aria-label="Tabel Riwayat Mutasi">
+            <thead>
+              <tr>
+                <th scope="col" class="text-center" style="width:60px">No</th>
+                <th scope="col">Tanggal</th>
+                <th scope="col">User (role)</th>
+                <th scope="col">Akun</th>
+                <th scope="col">Jenis</th>
+                <th scope="col" class="text-end">Saldo Awal</th>
+                <th scope="col" class="text-end">Nominal</th>
+                <th scope="col" class="text-end">Admin</th><!-- NEW -->
+                <th scope="col" class="text-end">Saldo Akhir</th>
+                <th scope="col">Keterangan</th>
+                <th scope="col" class="text-center" style="width:110px">Status</th>
+                <th scope="col" class="text-center" style="width:110px">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pager">
+          <button id="prevPage" class="btn">‹ Prev</button>
+          <span id="pageInfo">Halaman 1/1</span>
+          <button id="nextPage" class="btn">Next ›</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODALS & TOAST -->
+<!-- MODAL: Tambah -->
+<div id="modalTambah" class="modal-wrap">
+  <div class="modal-card">
+    <div class="modal-head"><h4 style="margin:0">Tambah Saldo</h4><button class="btnx" data-close>✕</button></div>
+    <div class="modal-body">
+      <label class="chip form-label">Akun</label>
+      <select id="akunTambah" class=" form-control  form-select"></select>
+      <label class="chip form-label" style="margin-top:8px">Nominal</label>
+      <input type="number" id="nominalTambah" class=" form-control " placeholder="0" inputmode="numeric">
+      <div id="hintTambah" class="helper">Rp 0</div>
+      <label class="chip form-label" style="margin-top:8px">Keterangan</label>
+      <input id="ketTambah" class=" form-control " placeholder="-">
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" data-close>Batal</button>
+        <button class="btn btn-success" id="simpanTambah">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Kurang -->
+<div id="modalKurang" class="modal-wrap">
+  <div class="modal-card">
+    <div class="modal-head"><h4 style="margin:0">Kurang Saldo</h4><button class="btnx" data-close>✕</button></div>
+    <div class="modal-body">
+      <label class="chip form-label">Akun</label>
+      <select id="akunKurang" class=" form-control  form-select"></select>
+      <label class="chip form-label" style="margin-top:8px">Nominal</label>
+      <input type="number" id="nominalKurang" class=" form-control " placeholder="0" inputmode="numeric">
+      <div id="hintKurang" class="helper">Rp 0</div>
+      <label class="chip form-label" style="margin-top:8px">Keterangan</label>
+      <input id="ketKurang" class=" form-control " placeholder="-">
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" data-close>Batal</button>
+        <button class="btn btn-danger" id="simpanKurang">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Pindah (with Admin) -->
+<div id="modalPindah" class="modal-wrap">
+  <div class="modal-card">
+    <div class="modal-head"><h4 style="margin:0">Pindah Saldo</h4><button class="btnx" data-close>✕</button></div>
+    <div class="modal-body">
+      <label class="chip form-label">Sumber Akun</label>
+      <select id="akunSumber" class=" form-control  form-select"></select>
+      <label class="chip form-label" style="margin-top:8px">Tujuan Akun</label>
+      <select id="akunTujuan" class=" form-control  form-select"></select>
+
+      <label class="chip form-label" style="margin-top:8px">Nominal</label>
+      <input type="number" id="nominalPindah" class=" form-control " placeholder="0" inputmode="numeric">
+      <div id="hintPindah" class="helper">Rp 0</div>
+
+      <label class="chip form-label" style="margin-top:8px">Admin (biaya transfer)</label>
+      <input type="number" id="adminPindah" class=" form-control " placeholder="0" inputmode="numeric">
+      <div id="hintAdminPindah" class="helper">Rp 0</div>
+
+      <label class="chip form-label" style="margin-top:8px">Keterangan</label>
+      <input id="ketPindah" class=" form-control " placeholder="-">
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" data-close>Batal</button>
+        <button class="btn btn-info" id="simpanPindah">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Undo -->
+<div id="toast" class="toast" role="status" aria-live="polite">
+  <span id="toastMsg">Riwayat dihapus.</span>
+  <button class="btn btn-primary" id="btnUndo">Undo</button>
+</div>
+
+<script>
+/* ===================== Shell & Auth ===================== */
+const AUTH_KEY='amko.auth', EXP_KEY=AUTH_KEY+':exp', LOGIN_PAGE='login.html';
+let session=null;
+(function requireAuth(){
+  try{ session = JSON.parse(localStorage.getItem(AUTH_KEY))||null; }catch{ session=null }
+  const exp = Number(localStorage.getItem(EXP_KEY))||0;
+  const expired = exp && Date.now()>exp;
+  if(!session || expired){
+    if(expired){ localStorage.removeItem(AUTH_KEY); localStorage.removeItem(EXP_KEY); }
+    location.href=LOGIN_PAGE;
+  }
+})();
+document.body.setAttribute('data-role', session?.role||'');
+
+/* ===================== Shell UI ===================== */
+(function(){
+  const root=document.documentElement, app=document.getElementById('root'), sidebar=document.getElementById('sidebar');
+  const collapseBtn=document.getElementById('collapseBtn'), themeBtn=document.getElementById('themeBtn');
+  const mobileOpen=document.getElementById('mobileOpen'), mobileClose=document.getElementById('mobileClose');
+  const search=document.getElementById('search'), today=document.getElementById('today'), currentUserEl=document.getElementById('currentUser');
+  const greeting=document.getElementById('greeting'), logoutBtn=document.getElementById('logoutBtn');
+
+  const name=session?.name||session?.username||'Pengguna';
+  currentUserEl && (currentUserEl.textContent = name + (session?.role?` (${session.role})`:'')); 
+  today && (today.textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
+  const h=new Date().getHours(); greeting && (greeting.textContent=(h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam')+', '+name);
+
+  const store={get:k=>localStorage.getItem(k),set:(k,v)=>localStorage.setItem(k,v)};
+  if(store.get('theme')==='dark') root.classList.add('dark');
+  themeBtn?.addEventListener('click',()=>{root.classList.toggle('dark');store.set('theme', root.classList.contains('dark')?'dark':'light')});
+  if(store.get('sidebar-collapsed')==='1') app.classList.add('collapse');
+  collapseBtn?.addEventListener('click',()=>{app.classList.toggle('collapse');store.set('sidebar-collapsed', app.classList.contains('collapse')?'1':'0')});
+  mobileOpen?.addEventListener('click',()=> sidebar.classList.add('open'));
+  mobileClose?.addEventListener('click',()=> sidebar.classList.remove('open'));
+  logoutBtn?.addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem(AUTH_KEY); localStorage.removeItem(EXP_KEY); location.href=LOGIN_PAGE; });
+
+  search?.addEventListener('input', ()=>{
+    const q=(search.value||'').toLowerCase().trim();
+    document.querySelectorAll('.menu .item').forEach(a=>{
+      const txt=(a.textContent||'').toLowerCase();
+      a.style.display = txt.includes(q)?'flex':'none';
+    });
+  });
+})();
+
+/* ===================== Cabang ===================== */
+const USERS_KEY='amko.users', BR_KEY='amko.branches';
+const users = (()=>{try{return JSON.parse(localStorage.getItem(USERS_KEY))||[]}catch{return []}})();
+let branches = (()=>{try{return JSON.parse(localStorage.getItem(BR_KEY))||[]}catch{return []}})();
+if(!Array.isArray(branches) || !branches.length){ branches=['AMKO 18']; localStorage.setItem(BR_KEY, JSON.stringify(branches)); }
+
+const me = users.find(u => (u.username||'').toLowerCase()===(session?.username||'').toLowerCase());
+const myBranch = me?.branch || branches[0];
+const isOwner = (session?.role||'').toLowerCase()==='owner';
+
+const selBranch = document.getElementById('selBranch');
+
+if(isOwner){
+  selBranch.innerHTML = branches.map(b=>`<option value="${b}">${b}</option>`).join('');
+  const last = localStorage.getItem('mutasi.branch') || myBranch;
+  selBranch.value = branches.includes(last) ? last : branches[0];
+}
+
+/* Warna chip cabang */
+const COLORS20 = [
+  {bg:'#E6FFFA', fg:'#115E59', border:'#99F6E4'},
+  {bg:'#EEF2FF', fg:'#3730A3', border:'#C7D2FE'},
+  {bg:'#FFFBEB', fg:'#92400E', border:'#FDE68A'},
+  {bg:'#FFE4E6', fg:'#9F1239', border:'#FECDD3'},
+  {bg:'#F0FDF4', fg:'#166534', border:'#BBF7D0'},
+  {bg:'#F5F3FF', fg:'#5B21B6', border:'#DDD6FE'},
+  {bg:'#E0F2FE', fg:'#075985', border:'#BAE6FD'},
+  {bg:'#F7FEE7', fg:'#3F6212', border:'#D9F99D'},
+  {bg:'#FAE8FF', fg:'#86198F', border:'#F5D0FE'},
+  {bg:'#F8FAFC', fg:'#334155', border:'#E2E8F0'},
+  {bg:'#FFF7ED', fg:'#9A3412', border:'#FED7AA'},
+  {bg:'#ECFEFF', fg:'#155E75', border:'#CFFAFE'},
+  {bg:'#FEFCE8', fg:'#854D0E', border:'#FEF08A'},
+  {bg:'#ECFDF5', fg:'#065F46', border:'#A7F3D0'},
+  {bg:'#FAF5FF', fg:'#6B21A8', border:'#E9D5FF'},
+  {bg:'#E2E8F0', fg:'#334155', border:'#CBD5E1'},
+  {bg:'#FEE2E2', fg:'#991B1B', border:'#FECACA'},
+  {bg:'#DBEAFE', fg:'#1E40AF', border:'#BFDBFE'},
+  {bg:'#FCE7F3', fg:'#9D174D', border:'#FBCFE8'},
+  {bg:'#E7E5E4', fg:'#44403C', border:'#D6D3D1'}
+];
+function paletteForBranch(br, branches){
+  let idx = branches.indexOf(br);
+  if(idx < 0) idx = 0;
+  return COLORS20[idx % COLORS20.length];
+}
+function applyBranchBadge(br, branches){
+  const chip=document.getElementById('branchChip'); if(!chip) return;
+  const pal = paletteForBranch(br, branches);
+  chip.textContent = br || '—';
+  chip.style.backgroundColor = pal.bg;
+  chip.style.color = pal.fg;
+  chip.style.borderColor = pal.border;
+}
+
+/* ===================== Data & Helpers ===================== */
+const LSK_AKUN='akun';
+const LSK_RIWAYAT='riwayatSaldo';
+const keyFor = (base, branch)=> branch ? `${base}@${branch}` : base;
+const ls = (k,v)=> v===undefined ? JSON.parse(localStorage.getItem(k)||'null') : localStorage.setItem(k, JSON.stringify(v));
+const fmtIDR = n => 'Rp ' + (Number(n)||0).toLocaleString('id-ID');
+const isoNow = () => new Date().toISOString();
+const viewTime = iso => new Date(iso).toLocaleString('id-ID');
+
+function seedAkunIfEmpty(arr){
+  if(arr && arr.length) return arr;
+  return [
+    {nama:'LACI TUNAI', saldo:10000000, saldoAwal:10000000, ket:'-','locked':true},
+    {nama:'BRI (538)', saldo:5000000, saldoAwal:0, ket:'-'},
+    {nama:'JAGO', saldo:2000000, saldoAwal:0, ket:'-'}
+  ];
+}
+function loadAkun(branch){
+  const byBr = ls(keyFor(LSK_AKUN, branch));
+  if(Array.isArray(byBr)) return seedAkunIfEmpty(byBr);
+  const legacy = ls(LSK_AKUN);
+  if(Array.isArray(legacy)) return seedAkunIfEmpty(legacy);
+  return seedAkunIfEmpty([]);
+}
+function saveAkun(branch, data){
+  ls(keyFor(LSK_AKUN, branch), data);
+}
+function loadRiwayat(branch){
+  const byBr = ls(keyFor(LSK_RIWAYAT, branch));
+  if(Array.isArray(byBr)) return byBr;
+  const legacy = ls(LSK_RIWAYAT);
+  if(Array.isArray(legacy)) return legacy;
+  return [];
+}
+function saveRiwayat(branch, data){
+  ls(keyFor(LSK_RIWAYAT, branch), data);
+}
+
+let currentBranch = isOwner ? (selBranch?.value || myBranch) : myBranch;
+let akunData = loadAkun(currentBranch);
+let riwayat = loadRiwayat(currentBranch);
+
+/* ===================== Util UI ===================== */
+const QS = s=>document.querySelector(s);
+const QSA = s=>Array.from(document.querySelectorAll(s));
+function show(el){ el.style.display='grid'; setTimeout(()=>{ const f=el.querySelector('.control'); f&&f.focus(); }, 30); }
+function hide(el){ el.style.display='none'; }
+QSA('[data-close]').forEach(el=> el.addEventListener('click', e=> hide(el.closest('.modal-wrap'))));
+['modalTambah','modalKurang','modalPindah'].forEach(id=>{
+  const m=QS('#'+id); m.addEventListener('click', e=>{ if(e.target===m) hide(m); });
+});
+
+/* ===================== Pref ===================== */
+const PREF = {
+  tambah:'ms:last:tambah',
+  kurang:'ms:last:kurang',
+  sumber:'ms:last:sumber',
+  tujuan:'ms:last:tujuan',
+  filter:'ms:filter'
+};
+function savePref(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+function loadPref(key,def){ try{ const v=JSON.parse(localStorage.getItem(key)); return v??def }catch{return def} }
+
+/* ===================== Render + Pagination ===================== */
+let filtered=[];
+const PAGE_SIZE=10;
+let currentPage=1;
+
+function refreshFilterAkun(){
+  const fAkun=QS('#filterAkun');
+  const akunOpts = akunData.map(a=>`<option value="${a.nama}">${a.nama}</option>`).join('');
+  fAkun.innerHTML = `<option value="">Semua Akun</option>` + akunOpts;
+  const fobj = loadPref(PREF.filter, null);
+  if(fobj && fobj.akun){ fAkun.value = fobj.akun; }
+}
+
+function renderRiwayat(){
+  const tb=QS('#tabelRiwayat tbody');
+  const list=(filtered.length?filtered:riwayat).slice().sort((a,b)=> new Date(b.at)-new Date(a.at));
+  const owner = (session?.role==='owner');
+
+  const maxPage=Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  if(currentPage>maxPage) currentPage=maxPage;
+  const start=(currentPage-1)*PAGE_SIZE;
+  const items=list.slice(start, start+PAGE_SIZE);
+
+  tb.innerHTML = items.map((r,idx)=>{
+    const rowCls = r.deleted?'row-deleted':''; const status = r.deleted?'Dihapus':'Valid';
+    const canDelete = owner && !r.deleted;
+    const aksi = canDelete ? `<button class="btn btn-danger owner-only" onclick="softDelete('${r.id}')" aria-label="Hapus Riwayat">Hapus</button>` : `<button class="btn" disabled>Hapus</button>`;
+    const userRole = `${r.user?.name||'-'}${r.user?.role ? ' ('+r.user.role+')':''}`;
+    return `<tr class="${rowCls}">
+      <td class="text-center">${start+idx+1}</td>
+      <td>${viewTime(r.at)}</td>
+      <td>${userRole}</td>
+      <td>${r.akun}</td>
+      <td>${r.jenis}</td>
+      <td class="text-end">${fmtIDR(r.sAwal)}</td>
+      <td class="text-end">${fmtIDR(r.nominal)}</td>
+      <td class="text-end">${fmtIDR(r.admin ?? 0)}</td><!-- NEW -->
+      <td class="text-end">${fmtIDR(r.sAkhir)}</td>
+      <td>${r.ket||'-'}</td>
+      <td class="text-center">${status}</td>
+      <td class="text-center">${aksi}</td>
+    </tr>`;
+  }).join('');
+
+  saveRiwayat(currentBranch, riwayat);
+
+  QS('#pageInfo').textContent = `Halaman ${currentPage}/${maxPage}`;
+  QS('#prevPage').disabled = currentPage<=1;
+  QS('#nextPage').disabled = currentPage>=maxPage;
+
+  // refresh opsi filter user dari data cabang aktif
+  const fUser=QS('#filterUser');
+  const names=[...new Set(riwayat.map(r=>r.user?.name).filter(Boolean))];
+  fUser.innerHTML = `<option value="">Semua</option>` + names.map(n=>`<option>${n}</option>`).join('');
+  const fobj = loadPref(PREF.filter, null);
+  if(fobj && fobj.user){ fUser.value = fobj.user; }
+}
+
+/* ===================== Modal open buttons ===================== */
+QS('#btnTambah').onclick=()=>{ openTambah(); };
+QS('#btnKurang').onclick=()=>{ openKurang(); };
+QS('#btnPindah').onclick=()=>{ openPindah(); };
+
+function openTambah(){
+  const sel=QS('#akunTambah');
+  sel.innerHTML = akunData.map(a=>`<option value="${a.nama}">${a.nama}</option>`).join('');
+  const last=loadPref(PREF.tambah, null); if(last) sel.value=last;
+  updateHint('Tambah');
+  show(QS('#modalTambah'));
+}
+function openKurang(){
+  const sel=QS('#akunKurang');
+  sel.innerHTML = akunData.map(a=>`<option value="${a.nama}">${a.nama}</option>`).join('');
+  const last=loadPref(PREF.kurang, null); if(last) sel.value=last;
+  updateHint('Kurang');
+  show(QS('#modalKurang'));
+}
+function openPindah(){
+  const src=QS('#akunSumber'), dst=QS('#akunTujuan');
+  const opts = akunData.map(a=>`<option value="${a.nama}">${a.nama}</option>`).join('');
+  src.innerHTML = opts; dst.innerHTML = opts;
+  const lastS = loadPref(PREF.sumber, null); if(lastS) src.value=lastS;
+  const lastT = loadPref(PREF.tujuan, null); if(lastT) dst.value=lastT;
+  enforceDifferentDst();
+  updateHint('Pindah');
+  show(QS('#modalPindah'));
+}
+
+/* ===================== Helper: hints & enforce dst!=src ===================== */
+function updateHint(kind){
+  const getVal = id => Number(QS(id).value||0);
+  if(kind==='Tambah'){
+    const v=getVal('#nominalTambah'); QS('#hintTambah').textContent = fmtIDR(v);
+  } else if(kind==='Kurang'){
+    const v=getVal('#nominalKurang'); QS('#hintKurang').textContent = fmtIDR(v);
+  } else {
+    const v=getVal('#nominalPindah'); QS('#hintPindah').textContent = fmtIDR(v);
+    const a=getVal('#adminPindah'); QS('#hintAdminPindah').textContent = fmtIDR(a); // NEW
+  }
+}
+['#nominalTambah','#nominalKurang','#nominalPindah','#adminPindah'].forEach(sel=>{
+  const el=QS(sel); el.addEventListener('input', ()=>{
+    if(sel==='#nominalTambah') updateHint('Tambah');
+    if(sel==='#nominalKurang') updateHint('Kurang');
+    if(sel==='#nominalPindah' || sel==='#adminPindah') updateHint('Pindah');
+  });
+});
+
+function enforceDifferentDst(){
+  const src=QS('#akunSumber').value;
+  const dst=QS('#akunTujuan');
+  Array.from(dst.options).forEach(o=> o.disabled = (o.value===src));
+  if(dst.value===src){
+    const first = Array.from(dst.options).find(o=>!o.disabled);
+    if(first) dst.value=first.value;
+  }
+}
+QS('#akunSumber').addEventListener('change', enforceDifferentDst);
+
+/* ===================== Operasi & Validasi ===================== */
+function getAkunByName(n){ return akunData.find(a=>a.nama===n); }
+function saveAkunNow(){ saveAkun(currentBranch, akunData); }
+
+function pushLog({akun, jenis, sAwal, nominal, sAkhir, ket, admin}){ // NEW accepts admin
+  riwayat.push({
+    id:cryptoId(),
+    at:isoNow(),
+    user: { id: session?.username||'user', name: session?.name||session?.username||'Pengguna', role: session?.role||'' },
+    akun, jenis, sAwal, nominal, sAkhir, ket:ket||'',
+    admin: Number(admin||0), // NEW
+    deleted:false
+  });
+}
+function cryptoId(){ return (crypto?.randomUUID? crypto.randomUUID() : 'id-'+Math.random().toString(36).slice(2,10)); }
+
+/* ====== Simpan Tambah ====== */
+QS('#simpanTambah').onclick=()=>{
+  const akun=QS('#akunTambah').value;
+  const nominal=+QS('#nominalTambah').value||0;
+  const ket=QS('#ketTambah').value.trim();
+  if(!akun||nominal<=0) return alert('Pilih akun & isi nominal dengan benar.');
+  const a=getAkunByName(akun); const awal=a.saldo; a.saldo += nominal;
+  pushLog({akun,jenis:'Tambah',sAwal:awal,nominal,sAkhir:a.saldo,ket});
+  saveAkunNow(); filtered=[]; currentPage=1; renderRiwayat(); hide(QS('#modalTambah'));
+  savePref(PREF.tambah, akun);
+};
+
+/* ====== Simpan Kurang ====== */
+QS('#simpanKurang').onclick=()=>{
+  const akun=QS('#akunKurang').value;
+  const nominal=+QS('#nominalKurang').value||0;
+  const ket=QS('#ketKurang').value.trim();
+  if(!akun||nominal<=0) return alert('Pilih akun & isi nominal dengan benar.');
+  const a=getAkunByName(akun);
+  const resultSaldo = a.saldo - nominal;
+  if(resultSaldo < 0){
+    const ok = confirm('Saldo akun akan menjadi negatif. Lanjutkan?');
+    if(!ok) return;
+  }
+  const awal=a.saldo; a.saldo = resultSaldo;
+  pushLog({akun,jenis:'Kurang',sAwal:awal,nominal,sAkhir:a.saldo,ket});
+  saveAkunNow(); filtered=[]; currentPage=1; renderRiwayat(); hide(QS('#modalKurang'));
+  savePref(PREF.kurang, akun);
+};
+
+/* ====== Simpan Pindah (Admin memotong sumber) ====== */
+QS('#simpanPindah').onclick=()=>{
+  const sumber=QS('#akunSumber').value;
+  const tujuan=QS('#akunTujuan').value;
+  const nominal=+QS('#nominalPindah').value||0;
+  const admin =+QS('#adminPindah').value||0; // NEW
+  const ket=QS('#ketPindah').value.trim();
+  if(!sumber||!tujuan||sumber===tujuan) return alert('Pilih sumber & tujuan yang berbeda.');
+  if(nominal<=0) return alert('Nominal harus lebih dari 0.');
+  const a=getAkunByName(sumber); const b=getAkunByName(tujuan);
+  const resultSaldo = a.saldo - nominal - admin; // NEW
+  if(resultSaldo < 0){
+    const ok = confirm('Saldo akun sumber akan menjadi negatif. Lanjutkan?');
+    if(!ok) return;
+  }
+  const awal=a.saldo; a.saldo = resultSaldo; b.saldo += nominal;
+  pushLog({akun:`${sumber} → ${tujuan}`,jenis:'Pindah',sAwal:awal,nominal,admin,sAkhir:a.saldo,ket}); // NEW include admin
+  saveAkunNow(); filtered=[]; currentPage=1; renderRiwayat(); hide(QS('#modalPindah'));
+  savePref(PREF.sumber, sumber); savePref(PREF.tujuan, tujuan);
+};
+
+/* ===================== Soft Delete + Rollback + Undo ===================== */
+let undoTimer=null, lastUndo=null;
+function showToast(msg,onUndo){
+  const t=QS('#toast'); QS('#toastMsg').textContent=msg; t.style.display='flex';
+  clearTimeout(undoTimer);
+  lastUndo = onUndo || null;
+  undoTimer = setTimeout(()=>{ t.style.display='none'; lastUndo=null; }, 5000);
+}
+QS('#btnUndo').addEventListener('click', ()=>{
+  const t=QS('#toast'); t.style.display='none';
+  if(lastUndo){ lastUndo(); lastUndo=null; }
+  clearTimeout(undoTimer);
+});
+
+function softDelete(id){
+  if(session?.role!=='owner'){ return alert('Hanya Owner yang dapat menghapus.'); }
+  const i=riwayat.findIndex(r=>r.id===id); if(i<0) return;
+  const alasan = prompt("Masukkan keterangan/alasan hapus (wajib):");
+  if(!alasan || !alasan.trim()){
+    alert("Keterangan wajib diisi. Penghapusan dibatalkan.");
+    return;
+  }
+  const r=riwayat[i];
+
+  // rollback saldo sesuai jenis
+  if(r.jenis==='Tambah'){
+    const a=getAkunByName(r.akun); if(a) a.saldo -= r.nominal;
+  } else if(r.jenis==='Kurang'){
+    const a=getAkunByName(r.akun); if(a) a.saldo += r.nominal;
+  } else if(r.jenis==='Pindah'){
+    const [src,dst]=r.akun.split(' → ');
+    const a=getAkunByName(src); const b=getAkunByName(dst);
+    const adm = r.admin||0; // NEW
+    if(a) a.saldo += (r.nominal + adm);
+    if(b) b.saldo -= r.nominal;
+  }
+  const prevKet=r.ket||'';
+  r.deleted=true; r.deletedAt=isoNow();
+  r.ket = (prevKet? prevKet+' ' : '') + `[HAPUS: ${alasan.trim()}]`;
+  saveAkunNow(); renderRiwayat();
+
+  // UNDO 5 detik
+  showToast('Riwayat dihapus. Batalkan?', ()=>{
+    if(r.jenis==='Tambah'){
+      const a=getAkunByName(r.akun); if(a) a.saldo += r.nominal;
+    } else if(r.jenis==='Kurang'){
+      const a=getAkunByName(r.akun); if(a) a.saldo -= r.nominal;
+    } else if(r.jenis==='Pindah'){
+      const [src,dst]=r.akun.split(' → ');
+      const a=getAkunByName(src); const b=getAkunByName(dst);
+      const adm = r.admin||0; // NEW
+      if(a) a.saldo -= (r.nominal + adm);
+      if(b) b.saldo += r.nominal;
+    }
+    r.deleted=false; delete r.deletedAt; r.ket = prevKet;
+    saveAkunNow(); renderRiwayat();
+  });
+}
+window.softDelete = softDelete;
+
+/* ===================== Filter ===================== */
+function getFilterVals(){
+  return {
+    awal: QS('#filterAwal').value || '',
+    akhir: QS('#filterAkhir').value || '',
+    akun: QS('#filterAkun').value || '',
+    jenis: QS('#filterJenis').value || '',
+    user: QS('#filterUser').value || ''
+  };
+}
+function applyFilter(){
+  const {awal,akhir,akun,jenis,user} = getFilterVals();
+  filtered = riwayat.filter(r=>{
+    const t=new Date(r.at); let ok=true;
+    if(awal) ok = ok && (t >= new Date(awal+'T00:00:00'));
+    if(akhir) ok = ok && (t <= new Date(akhir+'T23:59:59'));
+    if(akun) ok = ok && r.akun.includes(akun);
+    if(jenis) ok = ok && r.jenis===jenis;
+    if(user) ok = ok && r.user?.name===user;
+    return ok;
+  });
+  savePref(PREF.filter, {awal,akhir,akun,jenis,user});
+  currentPage=1;
+  renderRiwayat();
+}
+function resetFilter(){
+  setTodayRange();
+  ['filterAkun','filterJenis','filterUser'].forEach(id=>QS('#'+id).value='');
+  filtered=[]; currentPage=1; renderRiwayat(); localStorage.removeItem(PREF.filter);
+}
+QS('#btnCari').onclick=applyFilter;
+QS('#btnReset').onclick=resetFilter;
+
+/* ===================== Export CSV ===================== */
+QS('#btnExport').addEventListener('click', ()=>{
+  const rows = (filtered.length? filtered : riwayat).slice().sort((a,b)=> new Date(b.at)-new Date(a.at));
+  const header = ['Tanggal','User','Role','Akun','Jenis','Saldo Awal','Nominal','Admin','Saldo Akhir','Keterangan','Status']; // NEW
+  const lines = [header.join(',')];
+  rows.forEach(r=>{
+    const status = r.deleted?'Dihapus':'Valid';
+    const role = r.user?.role || '';
+    const cols = [
+      viewTime(r.at).replaceAll(',',''),
+      (r.user?.name||'').replaceAll(',',''),
+      role.replaceAll(',',''),
+      r.akun.replaceAll(',',''),
+      r.jenis.replaceAll(',',''),
+      r.sAwal,
+      r.nominal,
+      (r.admin??0), // NEW
+      r.sAkhir,
+      (r.ket||'').replaceAll('\n',' ').replaceAll(',',';'),
+      status
+    ];
+    lines.push(cols.join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='mutasi-saldo.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* ===================== Pager controls ===================== */
+QS('#prevPage').addEventListener('click', ()=>{ if(currentPage>1){ currentPage--; renderRiwayat(); }});
+QS('#nextPage').addEventListener('click', ()=>{
+  const total=(filtered.length?filtered:riwayat).length;
+  const maxPage=Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if(currentPage<maxPage){ currentPage++; renderRiwayat(); }
+});
+
+/* ===================== Ganti cabang (OWNER) ===================== */
+selBranch?.addEventListener('change', ()=>{
+  currentBranch = selBranch.value || myBranch;
+  localStorage.setItem('mutasi.branch', currentBranch);
+  applyBranchBadge(currentBranch, branches);
+  akunData = loadAkun(currentBranch);
+  riwayat = loadRiwayat(currentBranch);
+  filtered=[]; currentPage=1;
+  refreshFilterAkun();
+  renderRiwayat();
+});
+
+/* ===================== Init ===================== */
+function setTodayRange(){
+  const d=new Date(); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  QS('#filterAwal').value=`${y}-${m}-${day}`;
+  QS('#filterAkhir').value=`${y}-${m}-${day}`;
+}
+(function init(){
+  applyBranchBadge(currentBranch, branches);
+  refreshFilterAkun();
+
+  const fobj = loadPref(PREF.filter, null);
+  if(fobj){
+    QS('#filterAwal').value = fobj.awal||'';
+    QS('#filterAkhir').value = fobj.akhir||'';
+    QS('#filterAkun').value = fobj.akun||'';
+    QS('#filterJenis').value = fobj.jenis||'';
+    QS('#filterUser').value = fobj.user||'';
+  }
+  if(!QS('#filterAwal').value && !QS('#filterAkhir').value){ setTodayRange(); }
+
+  renderRiwayat();
+  if(fobj){ applyFilter(); }
+})();
+</script>
+
+<script>
+(function setChipVarsByBranch(){
+  try{
+    const root = document.documentElement;
+    // Helper to set vars
+    const setVars = (bg, fg, br) => {
+      root.style.setProperty('--chip-bg', bg);
+      root.style.setProperty('--chip-fg', fg);
+      root.style.setProperty('--chip-border', br);
+    };
+
+    // Cari branch dari chip / dropdown / localStorage
+    const chip = document.querySelector('.branch-chip') || document.getElementById('branchChip');
+    let branchText = chip ? (chip.textContent || chip.innerText || '').trim() : '';
+
+    if(!branchText){
+      const sel = document.getElementById('selBranch');
+      if(sel && sel.value) branchText = sel.value.trim();
+    }
+
+    if(!branchText){
+      try{
+        const current = JSON.parse(localStorage.getItem('amko.current')||'{}');
+        branchText = (current.branch||'').trim();
+      }catch(_){}
+    }
+
+    // Normalisasi sederhana
+    const b = (branchText||'').toLowerCase();
+
+    // Mapping warna (konsisten dengan kebijakan: AMKO 25 = hijau muda, AMKO 18 = ungu)
+    if(b.includes('amko 25')){
+      // green
+      setVars('#dcfce7', '#166534', '#bbf7d0');
+    } else if(b.includes('amko 18')){
+      // purple/violet
+      setVars('#ede9fe', '#5b21b6', '#ddd6fe');
+    } else {
+      // default netral brand-ish
+      setVars('#f1f5f9', '#334155', '#e2e8f0');
+    }
+
+    // Sinkronkan header tabel supaya ikut warna chip
+    (function syncHeaderWithChip(){
+      try{
+        const chipEl = chip || document.querySelector('.branch-chip') || document.getElementById('branchChip');
+        const cs = chipEl ? getComputedStyle(chipEl) : null;
+        const rootStyle = getComputedStyle(root);
+        const bg = cs ? cs.backgroundColor : rootStyle.getPropertyValue('--hdr-bg').trim();
+        const fg = cs ? cs.color : rootStyle.getPropertyValue('--hdr-text').trim();
+        let bc = cs ? cs.borderColor : rootStyle.getPropertyValue('--hdr-border').trim();
+        if(!bc || bc === 'transparent' || bc === 'rgba(0, 0, 0, 0)'){ bc = rootStyle.getPropertyValue('--border').trim() || '#E2E8F0'; }
+        root.style.setProperty('--hdr-bg', bg);
+        root.style.setProperty('--hdr-text', fg);
+        root.style.setProperty('--hdr-border', bc);
+      }catch(e){/* no-op */}
+    })();
+  }catch(e){/* no-op */}
+})();
+</script>
+
+<script>
+/* === Global Role + Nav Utilities (injected) === */
+(function(){
+  const AUTH_KEY='amko.auth', EXP_KEY='amko.auth.exp';
+  function getSession(){
+    try{ return JSON.parse(localStorage.getItem(AUTH_KEY)||'null') }catch(e){ return null }
+  }
+  const session = getSession();
+  const role = (session?.role||'').toLowerCase();
+  document.body.dataset.role = role || '';
+  document.body.classList.toggle('owner', role==='owner');
+  document.body.classList.toggle('not-owner', role!=='owner');
+
+  // Show login name if placeholder exists
+  try{
+    const u = session?.username || '—';
+    const el = document.getElementById('currentUser'); if(el) el.textContent = u;
+  }catch(e){}
+
+  // Logout link
+  try{
+    document.getElementById('logoutLink')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(EXP_KEY);
+      location.href = 'login.html';
+    });
+  }catch(e){}
+
+  // Active menu highlight (safe)
+  (function fixActiveNav(){
+    try{
+      const path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+      document.querySelectorAll('.menu .item').forEach(a=>{
+        const href = (a.getAttribute('href')||'').split('/').pop().toLowerCase();
+        a.classList.toggle('active', href===path);
+      });
+    }catch(e){}
+  })();
+
+  // Non-owner: ensure initial saldo exists; if not, force to input-saldo-awal
+  function needInitialSaldo(){
+    try{
+      // Determine branch for user
+      const BR_KEY='amko.branches';
+      const USERS_KEY='amko.users';
+      const ACC_BASE='akun';
+      let branches = []; try{ branches = JSON.parse(localStorage.getItem(BR_KEY)||'[]') }catch(_){}
+      if(!Array.isArray(branches) || !branches.length) branches=['AMKO 18'];
+      let users=[]; try{ users = JSON.parse(localStorage.getItem(USERS_KEY)||'[]') }catch(_){}
+      const me = users.find(u => (u.username||'').toLowerCase()===(session?.username||'').toLowerCase());
+      const myBranch = me?.branch || branches[0];
+      const key = myBranch ? `${ACC_BASE}@${myBranch}` : ACC_BASE;
+      let arr = null; try{ arr = JSON.parse(localStorage.getItem(key)||'null') }catch(_){}
+      return !Array.isArray(arr) || arr.length===0;
+    }catch(e){ return true }
+  }
+
+  // Apply redirect rule on pages except login & input-saldo-awal
+  const page = (location.pathname.split('/').pop()||'').toLowerCase();
+  const bypass = ['login.html','input-saldo-awal.html','master-saldo-akun.html','manajemen-pengguna.html'];
+  if(role && role!=='owner' && !bypass.includes(page)){
+    if(needInitialSaldo()){
+      if(page!=='input-saldo-awal.html'){
+        // Save where the user tried to go, for after-completion bounce
+        sessionStorage.setItem('amko.next', page || 'transaksi-mini-atm.html');
+        location.replace('master-saldo-akun.html');
+      }
+    }
+  }
+})();
+</script>
+
+<script>
+document.querySelectorAll('#mobileOpen').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.add('open'));
+});
+document.querySelectorAll('#mobileClose').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
+});
+</script>
+
+<script>
+  function amkoLogout(){
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    window.location.replace('index.html');
+  }
+</script>
+<script src="amko-sync.config.js"></script>
+<script src="amko-sync.js"></script>
+<script>window.amkoSync && amkoSync.auto && amkoSync.auto();</script>
+</body>
+</html>

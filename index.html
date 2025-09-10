@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base href=\"./\">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - AMKO</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { display:flex;align-items:center;justify-content:center; height:100vh;background:#f1f5f9;font-family:system-ui; }
+    .login-box { background:#fff;padding:32px;border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,.1);width:100%;max-width:380px; }
+    .login-box h2 { font-weight:700;margin-bottom:20px; }
+  </style>
+
+<style>
+
+/* ================= AMKO UI KIT v1 (Global Consistency) ================= */
+
+/* 1) Tipografi & spacing global (seragam) */
+:root{
+  --font-base: 14px;
+  --line-base: 1.55;
+  --fz-chip: 12px;
+  --fz-label: 12.5px;
+  --fz-input: 13px;
+  --fz-btn: 13px;
+  --ctrl-h: 40px;
+  --pad-input-x: 12px;
+  --pad-btn-y: .5rem;   /* ~8px */
+  --pad-btn-x: .7rem;   /* ~11px */
+  --tbl-pad-y: 9px;
+  --tbl-pad-x: 10px;
+
+  /* warna chip seragam */
+  --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0;
+}
+
+body{
+  font: var(--font-base)/var(--line-base) system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+/* 2) Form: input/select/label/filter seragam */
+label, .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+input.form-control, .form-control,
+select.form-select, .form-select,
+.control, select{
+  height: var(--ctrl-h) !important;
+  padding: 0 var(--pad-input-x) !important;
+  font-size: var(--fz-input) !important;
+  line-height: 1.3 !important;
+}
+
+/* “Filter wrapper” seragam */
+.flt-wrap .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+.flt-wrap .form-control, .flt-wrap .form-select{
+  padding: .45rem .6rem !important;
+  font-size: var(--fz-input) !important;
+  height: var(--ctrl-h) !important;
+}
+
+/* 3) Tombol seragam & tap target ramah jempol */
+.btn, .btnx{
+  font-size: var(--fz-btn) !important;
+  height: var(--ctrl-h) !important;
+  padding: var(--pad-btn-y) var(--pad-btn-x) !important;
+  border-radius: 10px !important;
+}
+.btn-icon{ width: 36px; height: 36px; border-radius: 8px; }
+
+/* 4) Chip/cabang seragam di semua halaman */
+.branch-chip{
+  font-size: var(--fz-chip) !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--chip-border) !important;
+  background: var(--chip-bg) !important;
+  color: var(--chip-fg) !important;
+  border-radius: 999px !important;
+}
+
+/* 5) Tabel: padding & numerik */
+table{ width:100%; border-collapse: separate; border-spacing: 0; }
+th, td{ padding: var(--tbl-pad-y) var(--tbl-pad-x) !important; }
+td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+
+/* Header tabel “ikut tema” default yang sudah ada */
+thead th{ position: sticky; top: 0; z-index: 1; }
+
+/* 6) Grid & kartu supaya rapi di HP */
+.content{ padding: 14px !important; gap: 12px !important; }
+.card{ border-radius: 14px !important; padding: 14px !important; }
+
+/* 7) Filter bar responsif → otomatis dua baris di layar sempit */
+.filters, .filter-grid, .hdr-actions, .branchbar .d-flex{
+  display: flex; flex-wrap: wrap; gap: 8px !important;
+}
+.filter-grid > *{ min-width: 160px; }
+
+/* 8) Tabel lebar → gulir horizontal aman di HP */
+.table-responsive, .table-wrap{ overflow: auto !important; }
+table.minwide{ min-width: 720px; }
+
+/* 9) Sidebar: breakpoint konsisten dan tombol mobile tampak */
+@media (max-width: 960px){
+  .app{ grid-template-columns: 1fr !important; }
+  .sidebar{ position: fixed; left:0; top:0; width:260px; transform: translateX(-100%); transition: transform .2s; z-index: 20; }
+  .sidebar.open{ transform: none; }
+  .mobile-toggle{ display: inline-flex !important; }
+  .content{ padding: 12px !important; }
+}
+
+/* 10) Judul/kop yang konsisten */
+h3{ font-size: 18px; margin: 0; }
+h4{ font-size: 16px; margin: 0; }
+h5{ font-size: 15px; margin: 0; }
+small,.form-text{ font-size: 12px; }
+
+</style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Login AMKO</h2>
+    <div class="mb-3">
+      <label class="form-label">Username</label>
+      <input type="text" id="username" class="form-control" placeholder="Username" autocomplete="username">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Password</label>
+      <input type="password" id="password" class="form-control" placeholder="Password" autocomplete="current-password">
+    </div>
+    <button id="btnLogin" class="btn btn-primary w-100">Login</button>
+    <div id="msg" class="text-danger mt-2 small"></div>
+  </div>
+
+<script>
+const AUTH_KEY='amko.auth', EXP_KEY=AUTH_KEY+':exp';
+const USERS_KEY='amko.users';
+
+// Seed contoh jika kosong (boleh dihapus bila Manajemen Pengguna sudah dipakai)
+if(!localStorage.getItem(USERS_KEY)){
+  const seedUsers=[
+    {username:'owner1',password:'123',name:'Owner Utama',role:'owner',branch:''},
+    {username:'kasir1',password:'123',name:'Kasir Cabang 18',role:'kasir',branch:'AMKO 18'},
+    {username:'admin1',password:'123',name:'Admin Cabang 25',role:'admin',branch:'AMKO 25'}
+  ];
+  localStorage.setItem(USERS_KEY, JSON.stringify(seedUsers));
+}
+
+function login(username, password){
+  let users=[];
+  try{ users=JSON.parse(localStorage.getItem(USERS_KEY))||[] }catch{}
+  const u = users.find(x=>x.username===username && x.password===password);
+  return u||null;
+}
+
+document.getElementById('btnLogin').addEventListener('click', ()=>{
+  const uname=document.getElementById('username').value.trim();
+  const pass=document.getElementById('password').value.trim();
+  const user=login(uname, pass);
+  const msg=document.getElementById('msg');
+
+  if(!user){ msg.textContent='Username atau password salah'; return; }
+
+  // simpan session + expiry (8 jam)
+  localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+  localStorage.setItem(EXP_KEY, String(Date.now()+8*60*60*1000));
+
+  const role = (user.role||'').toLowerCase();
+  const isOwner = role==='owner';
+
+  // Alur baru:
+  // Owner -> dashboard.html, Non-owner -> master-saldo-akun.html
+  location.href = isOwner ? 'dashboard.html' : 'master-saldo-akun.html';
+});
+</script>
+
+<script>
+document.querySelectorAll('#mobileOpen').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.add('open'));
+});
+document.querySelectorAll('#mobileClose').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
+});
+</script>
+
+<script>
+  function amkoLogout(){
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    window.location.replace('index.html');
+  }
+</script>
+<script src="amko-sync.config.js"></script>
+<script src="amko-sync.js"></script>
+<script>window.amkoSync && amkoSync.auto && amkoSync.auto();</script>
+</body>
+</html>

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base href=\"./\">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>AMKO — Master Akun Saldo</title>
+
+  <style>
+    :root{
+      --bg:#F8FAFC;--panel:#FFFFFF;--text:#0F172A;--muted:#475569;--brand:#2563EB;--hover:#F1F5F9;--border:#E2E8F0;--shadow:0 6px 24px rgba(2,6,23,.06),0 2px 8px rgba(2,6,23,.05);--danger:#EF4444;
+      --chip-bg:#FFF7ED; --chip-fg:#9A3412; --chip-border:#FED7AA;
+      --pill-bg:#F8FAFF; --pill-border:#DDE7FF; --pill-fg:#1E3A8A;
+    }
+    .dark{--bg:#0B1220;--panel:#0F172A;--text:#E5E7EB;--muted:#94A3B8;--brand:#60A5FA;--hover:#111827;--border:#1F2937;--shadow:0 8px 32px rgba(0,0,0,.35);--pill-bg:#0F172A;--pill-border:#1E293B;--pill-fg:#93C5FD}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    a{color:inherit;text-decoration:none}
+
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh;transition:grid-template-columns .25s ease}
+
+    .sidebar{position:sticky;top:0;height:100vh;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:12px;padding:14px;box-shadow:var(--shadow);z-index:2;overflow-y:auto}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:linear-gradient(135deg,var(--panel),rgba(37,99,235,.08))}
+    .brand .logo{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--brand);color:#fff;font-weight:800}
+    .brand .title{font-weight:700}
+
+    .toolbar{display:flex;gap:8px}
+    .btnx{padding:9px 12px;border:1px solid var(--border);background:var(--panel);border-radius:10px;cursor:pointer;color:var(--text)}
+    .btnx:hover{background:var(--hover)}
+    .mobile-toggle{display:none}
+
+    .search{position:relative}
+    .search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:12px;background:transparent;color:var(--text);outline:none}
+    .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6}
+    .section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 10px;margin-top:6px}
+
+    .menu{display:flex;flex-direction:column;gap:4px}
+    .item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:1px solid transparent;cursor:pointer}
+    .item:hover{background:var(--hover);border-color:var(--border)}
+    .item.active{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.25)}
+    .owner-only{display:none}
+    body[data-role="owner"] .owner-only{display:flex}
+
+    .topbar{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:10px 14px;z-index:1}
+    .chip{font-size:12px;color:var(--muted)}
+    .content{padding:18px;display:grid;gap:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+
+    @media (max-width:960px){
+      .app{grid-template-columns:1fr}
+      .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .2s;width:260px}
+      .sidebar.open{transform:none}
+      .mobile-toggle{display:inline-flex}
+    }
+    .collapse .label{display:none}
+    .collapse .app{grid-template-columns:72px 1fr}
+    .collapse .sidebar{padding:14px 10px}
+    .collapse .search,.collapse .section{display:none}
+    .collapse .item{justify-content:center}
+
+    .akun-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+    .akun{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--panel)}
+    .akun .header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+    .avatar{width:40px;height:40px;border-radius:10px;background:#22c55e;color:#fff;display:grid;place-items:center;font-weight:800}
+    .bank{background:#3b82f6}
+    .avatar.srv{ background:#EF4444; color:#fff; }
+    .name{font-weight:700}
+    .saldo{font-size:18px;font-weight:800;color:#DC2626}
+    .muted{color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid var(--pill-border);background:var(--pill-bg);color:var(--pill-fg);font-size:12px}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer}
+    .btn:hover{box-shadow:0 8px 20px rgba(2,6,23,.08)}
+    .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+
+    .table-wrap{width:100%;overflow:auto}
+    table.simple{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
+    table.simple th,table.simple td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left}
+    table.simple th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--hover)}
+    table.simple tr:hover td{background:rgba(2,6,23,.015)}
+
+    .menu-list{display:grid;gap:10px}
+    .menu-item{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--panel)}
+    .menu-item .meta{display:flex;flex-direction:column}
+    .spacer{flex:1}
+    .actions-row{display:flex;gap:8px;flex-wrap:wrap}
+
+    .branch-chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--chip-border);background:var(--chip-bg);color:var(--chip-fg)}
+    .control-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .input-sm{height:36px;border:1px solid var(--border);border-radius:10px;background:transparent;padding:0 10px}
+
+    .total-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+    .total-item{display:flex;flex-direction:column;gap:4px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--panel)}
+    .total-item strong{font-size:18px}
+
+    .modal-wrap{position:fixed;inset:0;display:block;opacity:0;visibility:hidden;pointer-events:none;place-items:center;background:rgba(2,6,23,.35);z-index:30;transition:opacity .15s ease, visibility .15s ease}
+    .modal-wrap.open{opacity:1;visibility:visible;pointer-events:auto}
+    .modal-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:0;min-width:min(520px,92%);transform:scale(.98);transition:transform .15s ease}
+    .modal-wrap.open .modal-card{transform:scale(1)}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px;border-bottom:1px solid var(--border)}
+
+    .modal-body{padding:14px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;align-items:start}
+    @media (max-width:640px){.form-grid{grid-template-columns:1fr}.modal-card{min-width:92%}}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .label-row{display:flex;align-items:center;gap:6px}
+    label.small{font-size:12.5px;color:var(--muted);font-weight:600}
+    .input,.textarea,select{width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);outline:none}
+    .textarea{height:92px;padding:10px 12px;resize:vertical}
+    .input:focus,.textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.25);border-color:var(--brand)}
+    #wrapSaldoAwal{grid-column:1/-1}
+    .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+    .err{color:#DC2626;font-size:12px;margin-top:2px}
+
+    .tip{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted);cursor:help;position:relative;user-select:none}
+    .tip:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25)}
+    .tip[data-tip]::after{
+      content:attr(data-tip);position:absolute;left:50%;transform:translate(-50%,-8px);bottom:100%;
+      white-space:normal;background:var(--panel);color:var(--text);border:1px solid var(--border);
+      padding:8px 10px;border-radius:10px;box-shadow:var(--shadow);width:max-content;max-width:260px;opacity:0;visibility:hidden;transition:.15s;z-index:40
+    }
+    .tip[data-tip]::before{
+      content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:100%;
+      border:6px solid transparent;border-top-color:var(--border);margin-bottom:-1px;opacity:0;visibility:hidden;transition:.15s
+    }
+    .tip:hover::after,.tip:focus::after,.tip:hover::before,.tip:focus::before{opacity:1;visibility:visible}
+
+    @media (max-width:640px){
+      body{font-size:15px; -webkit-tap-highlight-color: transparent;}
+      .content{padding:12px;gap:12px}
+      .card{padding:12px;border-radius:12px}
+      .topbar{padding:10px 12px;position:sticky;top:0}
+      .btn,.input,.textarea,select,.input-sm{height:44px}
+      .btn{padding:0 12px}
+      .btnx{padding:10px 12px}
+      .toolbar{gap:6px}
+      .card > h3{width:100%;margin:0 0 6px 0}
+      .control-inline{width:100%;justify-content:space-between;gap:8px}
+      #viewMode{min-width:120px}
+      .akun-grid{grid-template-columns:1fr}
+      .avatar{width:36px;height:36px}
+      .name{font-size:14px}
+      .saldo{font-size:16px}
+      .total-grid{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width:420px){
+      .total-grid{grid-template-columns:1fr}
+      .control-inline{gap:6px}
+      #viewMode{min-width:0;flex:0 0 46%}
+      #btnTambah{flex:1}
+    }
+    @media (pointer:coarse){
+      .table-wrap{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+    }
+  </style>
+
+<style>
+
+/* ================= AMKO UI KIT v1 (Global Consistency) ================= */
+
+/* 1) Tipografi & spacing global (seragam) */
+:root{
+  --font-base: 14px;
+  --line-base: 1.55;
+  --fz-chip: 12px;
+  --fz-label: 12.5px;
+  --fz-input: 13px;
+  --fz-btn: 13px;
+  --ctrl-h: 40px;
+  --pad-input-x: 12px;
+  --pad-btn-y: .5rem;   /* ~8px */
+  --pad-btn-x: .7rem;   /* ~11px */
+  --tbl-pad-y: 9px;
+  --tbl-pad-x: 10px;
+
+  /* warna chip seragam */
+  --chip-bg:#F1F5F9; --chip-fg:#334155; --chip-border:#E2E8F0;
+}
+
+body{
+  font: var(--font-base)/var(--line-base) system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+/* 2) Form: input/select/label/filter seragam */
+label, .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+input.form-control, .form-control,
+select.form-select, .form-select,
+.control, select{
+  height: var(--ctrl-h) !important;
+  padding: 0 var(--pad-input-x) !important;
+  font-size: var(--fz-input) !important;
+  line-height: 1.3 !important;
+}
+
+/* “Filter wrapper” seragam */
+.flt-wrap .form-label{ font-size: var(--fz-label) !important; margin-bottom: 2px; }
+.flt-wrap .form-control, .flt-wrap .form-select{
+  padding: .45rem .6rem !important;
+  font-size: var(--fz-input) !important;
+  height: var(--ctrl-h) !important;
+}
+
+/* 3) Tombol seragam & tap target ramah jempol */
+.btn, .btnx{
+  font-size: var(--fz-btn) !important;
+  height: var(--ctrl-h) !important;
+  padding: var(--pad-btn-y) var(--pad-btn-x) !important;
+  border-radius: 10px !important;
+}
+.btn-icon{ width: 36px; height: 36px; border-radius: 8px; }
+
+/* 4) Chip/cabang seragam di semua halaman */
+.branch-chip{
+  font-size: var(--fz-chip) !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--chip-border) !important;
+  background: var(--chip-bg) !important;
+  color: var(--chip-fg) !important;
+  border-radius: 999px !important;
+}
+
+/* 5) Tabel: padding & numerik */
+table{ width:100%; border-collapse: separate; border-spacing: 0; }
+th, td{ padding: var(--tbl-pad-y) var(--tbl-pad-x) !important; }
+td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+
+/* Header tabel “ikut tema” default yang sudah ada */
+thead th{ position: sticky; top: 0; z-index: 1; }
+
+/* 6) Grid & kartu supaya rapi di HP */
+.content{ padding: 14px !important; gap: 12px !important; }
+.card{ border-radius: 14px !important; padding: 14px !important; }
+
+/* 7) Filter bar responsif → otomatis dua baris di layar sempit */
+.filters, .filter-grid, .hdr-actions, .branchbar .d-flex{
+  display: flex; flex-wrap: wrap; gap: 8px !important;
+}
+.filter-grid > *{ min-width: 160px; }
+
+/* 8) Tabel lebar → gulir horizontal aman di HP */
+.table-responsive, .table-wrap{ overflow: auto !important; }
+table.minwide{ min-width: 720px; }
+
+/* 9) Sidebar: breakpoint konsisten dan tombol mobile tampak */
+@media (max-width: 960px){
+  .app{ grid-template-columns: 1fr !important; }
+  .sidebar{ position: fixed; left:0; top:0; width:260px; transform: translateX(-100%); transition: transform .2s; z-index: 20; }
+  .sidebar.open{ transform: none; }
+  .mobile-toggle{ display: inline-flex !important; }
+  .content{ padding: 12px !important; }
+}
+
+/* 10) Judul/kop yang konsisten */
+h3{ font-size: 18px; margin: 0; }
+h4{ font-size: 16px; margin: 0; }
+h5{ font-size: 15px; margin: 0; }
+small,.form-text{ font-size: 12px; }
+
+</style>
+</head>
+<body>
+<div id="root" class="app">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar" aria-label="Sidebar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="title">AMKO Panel</div>
+        <div style="font-size:12px;color:var(--muted)">Mini ATM</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="collapseBtn" class="btnx">⟷</button>
+      <button id="themeBtn" class="btnx">🌓</button>
+      <button id="mobileClose" class="btnx mobile-toggle">✕</button>
+    </div>
+
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5"/></svg>
+      <input id="search" placeholder="Cari menu…"/>
+    </div>
+
+    <div class="section">Menu</div>
+    <nav class="menu">
+      <a class="item owner-only" href="dashboard.html"><span class="label">📊 Dashboard</span></a>
+      <a class="item" href="saldo-real.html"><span class="label">📑 Saldo Real</span></a>
+      <a class="item active" href="master-saldo-akun.html"><span class="label">💰 Master Akun Saldo</span></a>
+      <a class="item" href="mutasi-saldo.html"><span class="label">🔄 Mutasi Saldo</span></a>
+      <a class="item" href="transaksi-mini-atm.html"><span class="label">🏧 Transaksi Mini ATM</span></a>
+      <a class="item owner-only" href="manajemen-pengguna.html"><span class="label">👥 Manajemen Pengguna</span></a>
+      <a class="item" href="#" id="logoutLink"><span class="label">🚪 Logout</span></a>
+    </nav>
+
+    <div class="section">Info</div>
+    <div style="font-size:12px;color:var(--muted);padding:8px 10px;border:1px dashed var(--border);border-radius:10px">
+      Login: <strong id="currentUser">—</strong><br/>Versi: <strong>v1.0</strong>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <header class="topbar">
+      <button id="mobileOpen" class="btnx mobile-toggle">☰</button>
+      <strong>Halaman <span>Master Akun Saldo</span></strong>
+      <span class="chip">Tanggal: <span id="today"></span></span>
+      <span class="chip" id="greeting"></span>
+    </header>
+
+    <section class="content">
+      <div id="branchBar" class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div class="owner-only" style="display:flex;align-items:center;gap:8px">
+          <label for="selBranch" class="muted" style="font-size:13px">Cabang:</label>
+          <select id="selBranch" class="input" style="width:220px"></select>
+        </div>
+        <div id="noteBranch" class="muted" style="font-size:12px"></div>
+      </div>
+
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+          Akun Saldo
+          <span id="branchChip" class="branch-chip">—</span>
+        </h3>
+        <div class="control-inline">
+          <button class="btn" id="btnTambah">➕ Tambah Akun</button>
+          <label for="viewMode" class="muted" style="font-size:13px">Tampilan:</label>
+          <select id="viewMode" class="input-sm">
+            <option value="card">Card</option>
+            <option value="list">List</option>
+            <option value="menu">Menu</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" id="totalsBar">
+        <div class="total-grid">
+          <div class="total-item"><span class="muted">Total Saldo Cash</span><strong id="totalCash">Rp 0</strong></div>
+          <div class="total-item"><span class="muted">Total Saldo Rekening</span><strong id="totalRek">Rp 0</strong></div>
+          <div class="total-item"><span class="muted">Total Server Pulsa</span><strong id="totalSrv">Rp 0</strong></div>
+          <div class="total-item"><span class="muted">Grand Total</span><strong id="totalAll">Rp 0</strong></div>
+        </div>
+      </div>
+
+      <div class="card"><div id="akunContainer"></div></div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div id="modalAkun" class="modal-wrap" aria-modal="true" role="dialog" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h4 id="modalTitle" style="margin:0">Tambah Akun</h4>
+      <button class="btnx" data-close aria-label="Tutup modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editIndex" />
+      <div class="form-grid">
+        <div class="field">
+          <div class="label-row">
+            <label class="small" for="namaAkun">Nama Akun</label>
+            <span class="tip" tabindex="0" role="tooltip" data-tip="Nama tampilan untuk akun. Contoh: ‘BRI (538)’ atau ‘LACI TUNAI’. Maks 40 karakter.">?</span>
+          </div>
+          <input id="namaAkun" class="input" maxlength="40" placeholder="cth: BRI (538)" autofocus />
+          <div id="errNama" class="err" style="display:none"></div>
+        </div>
+        <div class="field">
+          <div class="label-row">
+            <label class="small" for="saldoAkun">Saldo</label>
+            <span class="tip" tabindex="0" role="tooltip" data-tip="Nilai saldo saat ini. Ketik angka saja; otomatis diformat rupiah. Tidak boleh negatif.">?</span>
+          </div>
+          <input id="saldoAkun" class="input" type="text" inputmode="numeric" min="0" step="1" placeholder="0"/>
+          <div id="errSaldo" class="err" style="display:none"></div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label class="small" for="jenisAkun">Jenis</label>
+            <span class="tip" tabindex="0" role="tooltip" data-tip="Pilih ‘Rekening’ untuk bank/e-wallet; ‘Cash’ untuk kas fisik; ‘Server Pulsa’ untuk saldo server pulsa.">?</span>
+          </div>
+          <select id="jenisAkun" class="input">
+            <option value="rek">Rekening</option>
+            <option value="cash">Cash</option>
+            <option value="srv">Server Pulsa</option>
+          </select>
+          <div id="errJenis" class="err" style="display:none"></div>
+        </div>
+
+        <div class="field" style="grid-column:1/-1">
+          <div class="label-row">
+            <label class="small" for="ketAkun">Keterangan</label>
+            <span class="tip" tabindex="0" role="tooltip" data-tip="Catatan opsional, misalnya info rekening atau catatan internal. Maks 120 karakter.">?</span>
+          </div>
+          <textarea id="ketAkun" class="textarea" maxlength="120" placeholder="opsional…"></textarea>
+        </div>
+
+        <div id="wrapSaldoAwal" class="field" style="display:none">
+          <div class="label-row">
+            <label class="small" for="isSaldoAwalEdit" title="Menetapkan ulang saldo awal sesuai nilai saldo sekarang">Penandaan</label>
+            <span class="tip" tabindex="0" role="tooltip" data-tip="Saat EDIT: centang untuk menetapkan ulang Saldo Awal = nilai Saldo saat ini. Saat TAMBAH: Saldo Awal otomatis sama dengan Saldo.">?</span>
+          </div>
+          <label style="display:flex;gap:10px;align-items:center">
+            <input type="checkbox" id="isSaldoAwalEdit" /> Tandai nilai ini sebagai <strong>Saldo Awal</strong>
+          </label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" data-close tabindex="0">Batal</button>
+        <button class="btn" id="btnSimpan" tabindex="0">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ===== Auth guard konsisten ===== */
+  const AUTH_KEY='amko.auth', EXP_KEY=AUTH_KEY+':exp', LOGIN_PAGE='login.html';
+  const getSession=()=>{try{return JSON.parse(localStorage.getItem(AUTH_KEY))||null}catch{return null}};
+  const getExp=()=>Number(localStorage.getItem(EXP_KEY))||0;
+  const isExpired=()=>{const e=getExp();return e && Date.now()>e};
+  (function requireAuth(){
+    const s=getSession();
+    if(!s || isExpired()){
+      if(isExpired()){localStorage.removeItem(AUTH_KEY);localStorage.removeItem(EXP_KEY);}
+      location.href=LOGIN_PAGE;
+    }
+  })();
+  const session=getSession();
+  document.body.setAttribute('data-role', session?.role||'');
+  const name=session?.name||session?.username||'Pengguna';
+
+  /* ===== UI dasar (tetap) ===== */
+  const root=document.documentElement, app=document.getElementById('root'), sidebar=document.getElementById('sidebar');
+  const collapseBtn=document.getElementById('collapseBtn'), themeBtn=document.getElementById('themeBtn');
+  const mobileOpen=document.getElementById('mobileOpen'), mobileClose=document.getElementById('mobileClose');
+  const search=document.getElementById('search'), today=document.getElementById('today'), currentUserEl=document.getElementById('currentUser');
+  const greeting=document.getElementById('greeting');
+
+  const store={get:k=>localStorage.getItem(k),set:(k,v)=>localStorage.setItem(k,v)};
+  if(store.get('theme')==='dark') root.classList.add('dark');
+  themeBtn?.addEventListener('click',()=>{root.classList.toggle('dark');store.set('theme', root.classList.contains('dark')?'dark':'light')});
+  if(store.get('sidebar-collapsed')==='1') app.classList.add('collapse');
+  collapseBtn?.addEventListener('click',()=>{app.classList.toggle('collapse');store.set('sidebar-collapsed', app.classList.contains('collapse')?'1':'0')});
+  mobileOpen?.addEventListener('click',()=> sidebar.classList.add('open'));
+  mobileClose?.addEventListener('click',()=> sidebar.classList.remove('open'));
+
+  currentUserEl.textContent = name + (session?.role?` (${session.role})`:'' ); 
+  today.textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const h=new Date().getHours(); greeting.textContent=(h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam')+', '+name;
+
+  document.getElementById('logoutLink')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(EXP_KEY);
+    location.href='login.html';
+  });
+
+  /* ===== Data user & cabang ===== */
+  const USERS_KEY='amko.users', BR_KEY='amko.branches';
+  const users = (()=>{try{return JSON.parse(localStorage.getItem(USERS_KEY))||[]}catch{return []}})();
+  let branches = (()=>{try{return JSON.parse(localStorage.getItem(BR_KEY))||[]}catch{return []}})();
+  if(!Array.isArray(branches) || !branches.length){ branches=['AMKO 18']; localStorage.setItem(BR_KEY, JSON.stringify(branches)); }
+
+  const me = users.find(u => (u.username||'').toLowerCase()===(session?.username||'').toLowerCase());
+  /* perbaikan: ambil cabang dari session dulu supaya non-owner tidak salah cabang */
+  const myBranch = session?.branch || session?.cabang || me?.branch || branches[0];
+
+  const isOwner = (session?.role||'').toLowerCase()==='owner';
+  const isAdmin = (session?.role||'').toLowerCase()==='admin';
+  const selBranch = document.getElementById('selBranch');
+  const noteBranch = document.getElementById('noteBranch');
+  const branchBar = document.getElementById('branchBar');
+
+  if(isOwner){
+    selBranch.innerHTML = branches.map(b=>`<option value="${b}">${b}</option>`).join('');
+    const last = localStorage.getItem('saldoAwal.branch') || myBranch;
+    selBranch.value = branches.includes(last) ? last : branches[0];
+    noteBranch.textContent = 'Owner dapat memilih cabang untuk ditampilkan.';
+    branchBar.style.display = 'flex';
+  }else{
+    branchBar.style.display = 'none';
+  }
+
+  /* ====== DATA & PALET ====== */
+  const ACC_BASE='akun';
+  const keyFor = (br)=> br ? `${ACC_BASE}@${br}` : ACC_BASE;
+
+  /* perbaikan: TIDAK auto-seed data contoh; kita tampilkan apa adanya */
+  function loadAkun(branch){
+    const k = keyFor(branch);
+    try{
+      const arr = JSON.parse(localStorage.getItem(k) || 'null');
+      return Array.isArray(arr) ? arr : [];
+    }catch{ return []; }
+  }
+  function saveAkun(branch, arr){ localStorage.setItem(keyFor(branch), JSON.stringify(arr)); }
+
+  const BRANCH_PALETTE = {
+    'AMKO 18': {bg:'hsl(270 85% 95%)', fg:'hsl(270 45% 28%)', border:'hsl(270 60% 85%)'},
+    'AMKO 25': {bg:'hsl(150 85% 92%)', fg:'hsl(150 45% 25%)', border:'hsl(150 60% 80%)'}
+  };
+  function hashHue(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31 + str.charCodeAt(i))%360 } return h }
+  function autoPaletteForBranch(br){
+    const hue = hashHue(String(br||'AMKO'));
+    return { bg:`hsl(${hue} 85% 95%)`, fg:`hsl(${hue} 45% 28%)`, border:`hsl(${hue} 60% 85%)` };
+  }
+  function getBranchPalette(br){ return BRANCH_PALETTE[br] || autoPaletteForBranch(br) }
+  function setChipVars(pal){
+    const r = document.documentElement.style;
+    r.setProperty('--chip-bg', pal.bg);
+    r.setProperty('--chip-fg', pal.fg);
+    r.setProperty('--chip-border', pal.border);
+  }
+  function applyBranchBadge(br){
+    const chip=document.getElementById('branchChip');
+    if(!chip) return;
+    const pal = getBranchPalette(br);
+    setChipVars(pal);
+    chip.textContent = br || '—';
+  }
+
+  /* ====== STATE ====== */
+  let currentBranch = isOwner ? (selBranch?.value || myBranch) : myBranch;
+  let akun = loadAkun(currentBranch);
+  const container=document.getElementById('akunContainer');
+  const viewSel = document.getElementById('viewMode');
+  const savedView = localStorage.getItem('saldoAwal.view') || 'card';
+  viewSel.value = savedView;
+
+  function akunIcon(n, jenis){
+    if(jenis==='srv') return {emoji:'⚡', cls:'srv'};
+    const N=(n||'').toUpperCase();
+    if(N.includes('LACI') || jenis==='cash') return {emoji:'💸', cls:''}; 
+    if(/BRI|BCA|BNI|MANDIRI|JAGO|SEABANK|BSI|BTN|CIMB|PERMATA|DANAMON|OCBC|MAYBANK/.test(N) || jenis==='rek') return {emoji:'🏦', cls:'bank'};
+    return {emoji:'💳', cls:''};
+  }
+
+  function jenisLabel(j){ 
+    if(j==='cash') return 'Cash';
+    if(j==='srv') return 'Server Pulsa';
+    return 'Rekening';
+  }
+
+  function renderTotals(){
+    const totalRek = akun.filter(a=>a.jenis==='rek').reduce((s,a)=>s+(Number(a.saldo)||0),0);
+    const totalCash= akun.filter(a=>a.jenis==='cash').reduce((s,a)=>s+(Number(a.saldo)||0),0);
+    const totalSrv = akun.filter(a=>a.jenis==='srv').reduce((s,a)=>s+(Number(a.saldo)||0),0);
+    const totalAll = totalRek + totalCash + totalSrv;
+    document.getElementById('totalRek').textContent  = 'Rp ' + totalRek.toLocaleString('id-ID');
+    document.getElementById('totalCash').textContent = 'Rp ' + totalCash.toLocaleString('id-ID');
+    document.getElementById('totalSrv').textContent  = 'Rp ' + totalSrv.toLocaleString('id-ID');
+    document.getElementById('totalAll').textContent  = 'Rp ' + totalAll.toLocaleString('id-ID');
+  }
+
+  function renderCard(pal){
+    const grid = document.createElement('div');
+    grid.className='akun-grid';
+    const sorted = akun.slice().sort((a,b)=> (a.locked?-1:1));
+    grid.innerHTML = sorted.map((a,idx)=>{
+      const ico = akunIcon(a.nama, a.jenis);
+      let cardStyle = `background:${pal.bg};border-color:${pal.border}`;
+      return `<div class="akun" style="${cardStyle}">
+        <div class="header">
+          <div class="avatar ${ico.cls}">${ico.emoji}</div>
+          <div>
+            <div class="name">${a.nama||'-'}</div>
+            <div class="muted">Update: ${a.update||'-'}</div>
+          </div>
+        </div>
+        <div class="pill">${jenisLabel(a.jenis||'rek')}</div>
+        <div class="saldo">Saldo : Rp ${(Number(a.saldo)||0).toLocaleString('id-ID')}</div>
+        <div class="muted">Saldo Awal : Rp ${(Number(a.saldoAwal||0)).toLocaleString('id-ID')}</div>
+        <div class="muted">Keterangan: ${a.ket||'-'}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="editAkun(${idx})">Edit</button>
+          ${ (isOwner && !a.locked) ? `<button class="btn btn-danger" onclick="hapusAkun(${idx})">Hapus</button>` : '' }
+        </div>
+      </div>`;
+    }).join('');
+    return grid;
+  }
+
+  function renderList(){
+    const wrap = document.createElement('div');
+    wrap.className='table-wrap';
+    const rows = akun.map((a,idx)=>`
+      <tr>
+        <td>${a.nama||'-'}</td>
+        <td>${jenisLabel(a.jenis||'rek')}</td>
+        <td>Rp ${(Number(a.saldo)||0).toLocaleString('id-ID')}</td>
+        <td>Rp ${(Number(a.saldoAwal||0)).toLocaleString('id-ID')}</td>
+        <td>${a.ket||'-'}</td>
+        <td>
+          <div class="actions-row">
+            <button class="btn" onclick="editAkun(${idx})">Edit</button>
+            ${ (isOwner && !a.locked) ? `<button class="btn btn-danger" onclick="hapusAkun(${idx})">Hapus</button>` : '' }
+          </div>
+        </td>
+      </tr>`).join('');
+    wrap.innerHTML = `
+      <table class="simple">
+        <thead>
+          <tr>
+            <th>Nama Akun</th><th>Jenis</th><th>Saldo</th><th>Saldo Awal</th><th>Keterangan</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+    return wrap;
+  }
+
+  function renderMenu(){
+    const list = document.createElement('div');
+    list.className='menu-list';
+    list.innerHTML = akun.map((a,idx)=>{
+      const ico = akunIcon(a.nama, a.jenis);
+      return `<div class="menu-item">
+        <div class="avatar ${ico.cls}" style="min-width:40px">${ico.emoji}</div>
+        <div class="meta">
+          <strong>${a.nama||'-'}</strong>
+          <span class="muted">${jenisLabel(a.jenis||'rek')} • Saldo: Rp ${(Number(a.saldo)||0).toLocaleString('id-ID')} • Awal: Rp ${(Number(a.saldoAwal||0)).toLocaleString('id-ID')}</span>
+          <span class="muted">Ket: ${a.ket||'-'}</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="actions-row">
+          <button class="btn" onclick="editAkun(${idx})">Edit</button>
+          ${ (isOwner && !a.locked) ? `<button class="btn btn-danger" onclick="hapusAkun(${idx})">Hapus</button>` : '' }
+        </div>
+      </div>`;
+    }).join('');
+    return list;
+  }
+
+  function render(){
+    akun = loadAkun(currentBranch);
+    const pal = getBranchPalette(currentBranch);
+    applyBranchBadge(currentBranch);
+    container.innerHTML='';
+    const mode = viewSel.value || 'card';
+    let node;
+    if(mode==='list') node = renderList();
+    else if(mode==='menu') node = renderMenu();
+    else node = renderCard(pal);
+    container.appendChild(node);
+    renderTotals();
+  }
+
+  /* ===== Modal & actions ===== */
+  const modal=document.getElementById('modalAkun');
+  const closeEls=modal.querySelectorAll('[data-close]');
+  closeEls.forEach(el=>el.addEventListener('click', ()=> modal.classList.remove('open')));
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
+  modal.addEventListener('keydown', (e)=>{
+    if(e.key==='Escape'){ modal.classList.remove('open'); }
+    if(e.key==='Enter' && e.target.id!=='ketAkun'){ e.preventDefault(); document.getElementById('btnSimpan').click(); }
+  });
+
+  function openModal(title){
+    document.getElementById('modalTitle').textContent = title;
+    clearErrors();
+    modal.classList.add('open');
+    setTimeout(()=> document.getElementById('namaAkun').focus(), 50);
+  }
+
+  const btnTambah = document.getElementById('btnTambah');
+  if(!(isOwner || isAdmin)){ btnTambah.style.display='none'; } /* sesuai ketentuan lama */
+  btnTambah.addEventListener('click', ()=>{
+    if(!(isOwner || isAdmin)){
+      alert('Hanya Owner atau Admin yang dapat menambah akun.');
+      return;
+    }
+    document.getElementById('editIndex').value='';
+    document.getElementById('namaAkun').value='';
+    document.getElementById('saldoAkun').value='';
+    document.getElementById('ketAkun').value='';
+    document.getElementById('jenisAkun').value='rek';
+    document.getElementById('wrapSaldoAwal').style.display='none';
+    document.getElementById('isSaldoAwalEdit').checked=false;
+    openModal('Tambah Akun');
+  });
+
+  window.editAkun = function(i){
+    const a=akun[i];
+    document.getElementById('editIndex').value=i;
+    document.getElementById('namaAkun').value=a.nama||'';
+    document.getElementById('saldoAkun').value=(Number(a.saldo||0)).toLocaleString('id-ID');
+    document.getElementById('ketAkun').value=a.ket||'';
+    document.getElementById('jenisAkun').value=a.jenis||'rek';
+    document.getElementById('wrapSaldoAwal').style.display='block';
+    document.getElementById('isSaldoAwalEdit').checked=false;
+    openModal('Edit Akun');
+  };
+
+  window.hapusAkun = function(i){
+    if(!isOwner){ alert('Hanya Owner yang dapat menghapus akun.'); return; }
+    const a=akun[i];
+    if(a.locked){ alert('Akun terkunci tidak dapat dihapus.'); return; }
+    const reason = (prompt('Alasan hapus (wajib diisi):')||'').trim();
+    if(!reason){ alert('Dibatalkan: alasan wajib diisi.'); return; }
+    akun.splice(i,1);
+    saveAkun(currentBranch, akun);
+    render();
+  };
+
+  /* ===== Validasi & simpan ===== */
+  const saldoEl = document.getElementById('saldoAkun');
+  const jenisEl = document.getElementById('jenisAkun');
+  const namaEl  = document.getElementById('namaAkun');
+
+  const toNum = v => Number(String(v).replace(/[^\d]/g,'')||0);
+  const fmt = n => toNum(n).toLocaleString('id-ID');
+
+  saldoEl.addEventListener('input', ()=>{
+    const raw = toNum(saldoEl.value);
+    saldoEl.value = fmt(raw);
+  });
+  saldoEl.addEventListener('paste', (e)=>{
+    e.preventDefault();
+    const txt=(e.clipboardData.getData('text')||'').replace(/[^\d]/g,'');
+    saldoEl.value = fmt(txt);
+  });
+  window.__getSaldoClean = ()=> toNum(saldoEl.value);
+
+  function setErr(id,msg){ const el=document.getElementById(id); if(!el) return;
+    el.textContent=msg||''; el.style.display=msg?'block':'none';
+  }
+  function clearErrors(){ setErr('errNama',''); setErr('errSaldo',''); setErr('errJenis',''); }
+
+  namaEl.addEventListener('input', ()=>{
+    namaEl.value = namaEl.value.replace(/\s{2,}/g,' ').replace(/^\s+/,'');
+  });
+
+  document.getElementById('btnSimpan').addEventListener('click', ()=>{
+    clearErrors();
+    const idx = document.getElementById('editIndex').value;
+    const nama = namaEl.value.trim();
+    const saldoRawDisplay = saldoEl.value;
+    const saldo = window.__getSaldoClean ? __getSaldoClean() : toNum(saldoRawDisplay);
+    const jenis = (jenisEl.value||'').toLowerCase();
+    const ket = (document.getElementById('ketAkun').value||'').trim();
+    const now = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+
+    let hasErr=false;
+    if(!nama){ setErr('errNama','Nama akun wajib diisi.'); hasErr=true; }
+    if(saldoRawDisplay==='' || isNaN(saldo)){ setErr('errSaldo','Saldo wajib diisi angka.'); hasErr=true; }
+    if(saldo < 0){ setErr('errSaldo','Saldo tidak boleh negatif.'); hasErr=true; }
+    if(!(jenis==='rek' || jenis==='cash' || jenis==='srv')){ setErr('errJenis','Pilih jenis akun.'); hasErr=true; }
+    if(hasErr){ return; }
+
+    const mode = idx==='' ? 'Tambah' : 'Edit';
+    const ringkas = [
+      `${mode} akun di cabang: ${currentBranch}`,
+      `Nama : ${nama}`,
+      `Jenis: ${jenisLabel(jenis)}`,
+      `Saldo: Rp ${saldo.toLocaleString('id-ID')}`,
+      `Keterangan: ${ket || '-'}`
+    ].join('\n');
+    if(!confirm(`Simpan perubahan?\n\n${ringkas}`)) return;
+
+    akun = loadAkun(currentBranch);
+    if(idx===''){
+      if(!(isOwner || isAdmin)){
+        alert('Hanya Owner atau Admin yang dapat menambah akun.');
+        return;
+      }
+      akun.push({nama, jenis, saldo, saldoAwal:saldo, ket, update:now});
+    }else{
+      const i=Number(idx);
+      akun[i].nama=nama;
+      akun[i].jenis=jenis;
+      akun[i].saldo=saldo;
+      akun[i].ket=ket;
+      akun[i].update=now;
+      if(document.getElementById('isSaldoAwalEdit').checked){
+        akun[i].saldoAwal = saldo;
+      }
+    }
+    saveAkun(currentBranch, akun);
+    modal.classList.remove('open');
+    render();
+  });
+
+  /* ===== Search & filter ===== */
+  search?.addEventListener('input', ()=>{
+    const q=(search.value||'').toLowerCase().trim();
+    document.querySelectorAll('.menu .item').forEach(a=>{
+      const txt=(a.textContent||'').toLowerCase();
+      a.style.display = txt.includes(q)?'flex':'none';
+    });
+  });
+
+  selBranch?.addEventListener('change', ()=>{
+    currentBranch = selBranch.value || myBranch;
+    localStorage.setItem('saldoAwal.branch', currentBranch);
+    render();
+  });
+
+  viewSel.addEventListener('change', ()=>{
+    localStorage.setItem('saldoAwal.view', viewSel.value);
+    render();
+  });
+
+  /* ===== First render ===== */
+  applyBranchBadge(currentBranch);
+  render();
+})();
+</script>
+
+<script>
+(function fixActiveNav(){
+  try{
+    const path = location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.menu .item').forEach(a=>{
+      const href = (a.getAttribute('href')||'').split('/').pop();
+      a.classList.toggle('active', href===path);
+    });
+  }catch(e){}
+})();
+</script>
+
+<script>
+/* === Global Role + Nav Utilities (dibetulkan) === */
+(function(){
+  const AUTH_KEY='amko.auth', EXP_KEY=AUTH_KEY+':exp'; /* konsisten, bukan 'amko.auth.exp' */ :contentReference[oaicite:5]{index=5}
+  function getSession(){ try{ return JSON.parse(localStorage.getItem(AUTH_KEY)||'null') }catch(e){ return null } }
+  const session = getSession();
+  const role = (session?.role||'').toLowerCase();
+  document.body.dataset.role = role || '';
+  document.body.classList.toggle('owner', role==='owner');
+  document.body.classList.toggle('not-owner', role!=='owner');
+
+  document.getElementById('logoutLink')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(EXP_KEY);
+    location.href='login.html';
+  });
+
+  (function fixActiveNav2(){
+    try{
+      const path = (location.pathname.split('/').pop() || '').toLowerCase();
+      document.querySelectorAll('.menu .item').forEach(a=>{
+        const href = (a.getAttribute('href')||'').split('/').pop().toLowerCase();
+        a.classList.toggle('active', href===path);
+      });
+    }catch(e){}
+  })();
+})(); /* ← kurung IIFE diperbaiki; tidak ada } nyasar */ :contentReference[oaicite:6]{index=6}
+</script>
+
+<script>
+document.querySelectorAll('#mobileOpen').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.add('open'));
+});
+document.querySelectorAll('#mobileClose').forEach(btn=>{
+  btn.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
+});
+</script>
+
+<script>
+  function amkoLogout(){
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    window.location.replace('index.html');
+  }
+</script>
+<script src="amko-sync.config.js"></script>
+<script src="amko-sync.js"></script>
+<script>window.amkoSync && amkoSync.auto && amkoSync.auto();</script>
+</body>
+</html>
