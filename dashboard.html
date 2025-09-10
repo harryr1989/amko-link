@@ -197,73 +197,52 @@ small,.form-text{ font-size: 12px; }
 #tblBranchWrap .toggle-rot[aria-expanded="true"]{ transform: rotate(180deg); }
 </style>
 
-<!-- AMKO mobile enhancements -->
-<style id="amko-mobile-css">
-/* Only affect when body has .amko-mobile */
+<!-- AMKO mobile v2 CSS -->
+<style id="amko-mobile-css-2">
+:root{ --amko-bar-h:56px; }
 @media (max-width: 992px){
-  body.amko-mobile { overflow-x:hidden; }
-  /* Sidebar drawer behavior */
-  body.amko-mobile .sidebar{
-    position: fixed !important;
-    top: 0; left: 0;
-    height: 100dvh;
-    width: min(78vw, 320px);
-    transform: translateX(-102%);
-    transition: transform .2s ease;
-    z-index: 20;
-    background: inherit; /* keep existing theme */
-    box-shadow: 0 10px 30px rgba(0,0,0,.18);
-  }
-  body.amko-mobile.amko-drawer-open .sidebar{
-    transform: translateX(0);
-  }
+  body.amko-mobile-v2{ overflow-x:hidden; }
+  /* Sticky topbar safeguard */
+  .topbar, header.topbar{ position: sticky; top: 0; z-index: 25; background: inherit; }
+  main, .content, .wrapper, .container, .container-fluid{ scroll-padding-top: var(--amko-bar-h); }
 
+  /* Sidebar drawer */
+  .sidebar{ position: fixed !important; top: 0; left: 0; height: 100dvh; width: min(82vw, 320px);
+    transform: translateX(-102%); transition: transform .2s ease; z-index: 30; background: inherit; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+  body.amko-drawer-open .sidebar{ transform: translateX(0); }
   /* Backdrop */
-  .amko-backdrop{
-    display:none;
-  }
-  body.amko-mobile.amko-drawer-open .amko-backdrop{
-    display:block;
-    position: fixed;
-    inset: 0;
-    background: rgba(2,6,23,.45);
-    backdrop-filter: saturate(120%) blur(1px);
-    z-index: 15;
-  }
+  .amko-backdrop{ display:none; }
+  body.amko-drawer-open .amko-backdrop{ display:block; position: fixed; inset: 0; background: rgba(2,6,23,.42);
+    backdrop-filter: saturate(120%) blur(1px); z-index: 25; }
 
-  /* Hamburger button */
-  .amko-hamburger{
-    display:inline-flex;
-    align-items:center; justify-content:center;
-    gap:.5rem;
-    padding:.5rem .75rem;
-    line-height:1;
-    border:0;
-    border-radius:.75rem;
-    background:#0ea5e9; /* fallback if no framework color */
-    color:white; font-weight:600;
-  }
-  /* If no topbar detected, use floating button */
-  .amko-fab{
-    position: fixed; top: .75rem; left: .75rem;
-    z-index: 30;
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  }
+  /* Hamburger */
+  #amkoHamburger2{ display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .8rem; border:0; border-radius:.75rem;
+    background:#0ea5e9; color:#fff; font-weight:600; }
+  .amko-fab2{ position: fixed; top:.75rem; left:.75rem; z-index:35; box-shadow:0 8px 24px rgba(0,0,0,.18); }
 
-  /* Make tables scrollable horizontally */
-  .amko-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling: touch; }
-  .amko-table-wrap table{ min-width:680px; }
+  /* Auto-grid for cards/widgets */
+  .amko-auto-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
+  .amko-auto-grid > .card, .amko-auto-grid > .widget, .amko-auto-grid > .tile{ min-width:0; }
 
-  /* Bigger touch targets for header actions */
-  header .btn, .topbar .btn, .topbar a, .topbar button{
-    min-height: 40px; padding-inline: .9rem;
-  }
+  /* Tables scroll */
+  .amko-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .amko-table-wrap table{ min-width: 720px; }
+
+  /* Bottom bar */
+  .amko-bottom-bar{ position: fixed; left:0; right:0; bottom:0; height: var(--amko-bar-h); z-index: 40;
+    background: #0b1220; color:#fff; display:flex; align-items:center; justify-content:space-around; gap:8px; }
+  .amko-bottom-bar button, .amko-bottom-bar a{ appearance:none; border:0; background:transparent; color:inherit; font:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 8px; min-width:64px; text-decoration:none; }
+  .amko-bottom-spacer{ height: var(--amko-bar-h); }
+
+  /* Images/charts responsive */
+  img, canvas, svg{ max-width:100%; height:auto; }
 }
 </style>
 
 </head>
 <body>
-<div class=\"amko-backdrop\" id=\"amkoBackdrop\"></div>
+<div class=\"amko-backdrop\" id=\"amkoBackdrop2\" aria-hidden=\"true\"></div>
 <div id="root" class="app">
   <!-- SIDEBAR -->
   <aside id="sidebar" class="sidebar" aria-label="Sidebar">
@@ -300,7 +279,7 @@ small,.form-text{ font-size: 12px; }
   <!-- MAIN -->
   <main>
     \1
-  <button class="amko-hamburger" id="amkoHamburger" aria-label="Buka menu">☰ Menu</button>
+  <button id="amkoHamburger2" aria-label="Buka menu">☰ Menu</button>
 
       <strong>Dashboard Owner</strong>
       <span class="chip">Hari ini: <span id="today"></span></span>
@@ -826,47 +805,84 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 </script>
 
 
-<!-- AMKO mobile scripts -->
-<script id="amko-mobile-js">
+<!-- AMKO bottom bar -->
+<div class="amko-bottom-bar" id="amkoBottomBar" role="navigation" aria-label="Menu cepat">
+  <a href="dashboard.html" onclick="amkoGoto && amkoGoto('dashboard.html'); return false;">🏠<small>Home</small></a>
+  <a href="transaksi-mini-atm.html" onclick="amkoGoto && amkoGoto('transaksi-mini-atm.html'); return false;">💳<small>Transaksi</small></a>
+  <a href="mutasi-saldo.html" onclick="amkoGoto && amkoGoto('mutasi-saldo.html'); return false;">🔁<small>Mutasi</small></a>
+  <a href="saldo-real.html" onclick="amkoGoto && amkoGoto('saldo-real.html'); return false;">💰<small>Saldo</small></a>
+  <a href="master-saldo-akun.html" onclick="amkoGoto && amkoGoto('master-saldo-akun.html'); return false;">📂<small>Master</small></a>
+</div>
+<div class="amko-bottom-spacer" aria-hidden="true"></div>
+
+
+<!-- AMKO mobile v2 JS -->
+<script id="amko-mobile-js-2">
 (function(){
-  if (window.__amkoMobileInit) return; window.__amkoMobileInit = true;
+  if (window.__amkoMobileInit2) return; window.__amkoMobileInit2 = true;
 
-  function isMobileW(){ return window.innerWidth <= 992; }
-  function applyMobileFlag(){ document.body.classList.toggle('amko-mobile', isMobileW()); }
-  applyMobileFlag(); window.addEventListener('resize', applyMobileFlag);
-
-  const btn = document.getElementById('amkoHamburger');
-  const backdrop = document.getElementById('amkoBackdrop');
-  function openDrawer(){ document.body.classList.add('amko-drawer-open'); }
-  function closeDrawer(){ document.body.classList.remove('amko-drawer-open'); }
-
-  btn && btn.addEventListener('click', openDrawer);
-  backdrop && backdrop.addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeDrawer(); });
-
-  // Close after clicking a link inside .sidebar
-  function wireSidebarLinks(){
-    var sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar') || document.querySelector('aside') || document.querySelector('nav.sidebar');
-    if(!sidebar) return;
-    sidebar.querySelectorAll('a[href]').forEach(function(a){
-      a.addEventListener('click', function(){ setTimeout(closeDrawer, 50); }, {passive:true});
-    });
+  function isMobile(){ return window.innerWidth <= 992; }
+  function applyFlags(){
+    document.body.classList.toggle('amko-mobile-v2', isMobile());
   }
-  wireSidebarLinks();
+  applyFlags(); window.addEventListener('resize', applyFlags);
 
-  // Make big tables scrollable on mobile—wrap them once.
+  const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar') || document.querySelector('aside');
+  const backdrop = document.getElementById('amkoBackdrop2');
+  const burger = document.getElementById('amkoHamburger2');
+  function openDrawer(){ if(!sidebar) return; document.body.classList.add('amko-drawer-open'); }
+  function closeDrawer(){ document.body.classList.remove('amko-drawer-open'); }
+  burger && burger.addEventListener('click', openDrawer);
+  backdrop && backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); });
+
+  // Auto-grid: find parents that contain multiple .card/.widget/.tile and grid them.
+  try{
+    const candidates = Array.from(document.querySelectorAll('main, .content, .container, .container-fluid, .wrapper'));
+    candidates.forEach(c=>{
+      const kids = Array.from(c.children || []);
+      const cards = kids.filter(k => /(card|widget|tile)/i.test(k.className||''));
+      if (cards.length >= 2){
+        c.classList.add('amko-auto-grid');
+      }
+    });
+  }catch(e){}
+
+  // Wrap wide tables to be horizontally scrollable.
   function wrapTables(){
-    if (!isMobileW()) return;
-    document.querySelectorAll('table').forEach(function(t){
+    if (!isMobile()) return;
+    document.querySelectorAll('table').forEach(t=>{
       if (t.closest('.amko-table-wrap')) return;
-      var w = document.createElement('div');
+      const w = document.createElement('div');
       w.className = 'amko-table-wrap';
       t.parentNode && t.parentNode.insertBefore(w, t);
       w.appendChild(t);
     });
   }
-  wrapTables();
-  window.addEventListener('resize', wrapTables);
+  wrapTables(); window.addEventListener('resize', wrapTables);
+
+  // Swipe gestures: open from left edge, close by swiping left.
+  let startX = 0, startY = 0, tracking = false;
+  window.addEventListener('touchstart', (e)=>{
+    if (!isMobile()) return;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; tracking = (startX < 24); // edge
+  }, {passive:true});
+  window.addEventListener('touchmove', (e)=>{
+    if (!isMobile() || !tracking) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dy < 40 && dx > 40){ openDrawer(); tracking = false; }
+  }, {passive:true});
+  window.addEventListener('touchend', ()=>{ tracking = false; }, {passive:true});
+
+  // Close after clicking any link in sidebar (if exists)
+  if (sidebar){
+    sidebar.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => setTimeout(closeDrawer, 80), {passive:true});
+    });
+  }
 })();
 </script>
 
