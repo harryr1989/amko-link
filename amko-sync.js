@@ -1,60 +1,135 @@
-// AMKO Sync (Sheets) — Client
+\
+// AMKO Sync (Sheets) — v2 with auto intervals + dirty tracking
 (function(global){
-  const cfg = { endpoint: "", namespace: "amko", syncAll: true, excludeKeys: [] };
+  const cfgDefaults = {
+    endpoint: "",
+    namespace: "amko",
+    syncAll: true,
+    excludeKeys: [],
+    autoPullMs: 15000,
+    autoPushMs: 15000
+  };
+  let cfg = {...cfgDefaults};
   let inited = false;
-  function init(userCfg){
-    if (inited) return;
-    Object.assign(cfg, userCfg || {}, (global.AMKO_SYNC_CONFIG||{}));
-    inited = true;
-  }
+  let lastPull = 0, lastPush = 0;
+  let dirty = false; // true jika localStorage berubah
+  const LS = window.localStorage;
+
+  // --- util ---
+  function now(){ return Date.now(); }
   function shouldSyncKey(k){
-    const exclude = (global.AMKO_SYNC_CONFIG?.excludeKeys || cfg.excludeKeys);
-    if (exclude.includes(k)) return false;
-    const syncAll = (global.AMKO_SYNC_CONFIG?.syncAll ?? cfg.syncAll);
-    if (syncAll) return true;
-    const ns = (global.AMKO_SYNC_CONFIG?.namespace || cfg.namespace) + ":";
+    if ((cfg.excludeKeys||[]).includes(k)) return false;
+    if (cfg.syncAll) return true;
+    const ns = (cfg.namespace||"amko") + ":";
     return k.startsWith(ns);
   }
-  async function pull(){
-    try{
-      const endpoint = (global.AMKO_SYNC_CONFIG?.endpoint || cfg.endpoint);
-      if(!endpoint || !/^https?:\/\//.test(endpoint)) return;
-      const r = await fetch(endpoint, { method:"GET", credentials:"omit" });
-      const j = await r.json();
-      if(j && j.ok && j.data){
-        for(const [k,v] of Object.entries(j.data)){
-          try{ if (shouldSyncKey(k)) localStorage.setItem(k, JSON.stringify(v)); }catch(e){}
-        }
-      }
-    }catch(e){}
-  }
-  function _collectAll(){
+  function collectAll(){
     const out = {};
-    for (let i=0;i<localStorage.length;i++){
-      const k = localStorage.key(i);
+    for (let i=0;i<LS.length;i++){
+      const k = LS.key(i);
       if (!shouldSyncKey(k)) continue;
-      let val = localStorage.getItem(k);
-      try{ out[k] = JSON.parse(val); }catch(e){ out[k] = val; }
+      const v = LS.getItem(k);
+      try { out[k] = JSON.parse(v); } catch { out[k] = v; }
     }
     return out;
   }
-  async function push(){
+  async function httpGet(url){
+    const r = await fetch(url, {method:"GET", credentials:"omit"});
+    return await r.json();
+  }
+  async function httpPost(url, json){
+    const body = JSON.stringify(json||{});
     try{
-      const endpoint = (global.AMKO_SYNC_CONFIG?.endpoint || cfg.endpoint);
-      if(!endpoint || !/^https?:\/\//.test(endpoint)) return;
-      const payload = _collectAll();
-      await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), keepalive:true });
-    }catch(e){}
+      const r = await fetch(url, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body,
+        keepalive:true
+      });
+      return await r.text();
+    }catch(e){
+      // Fallback for pagehide/beforeunload
+      try{
+        if (navigator.sendBeacon){
+          const blob = new Blob([body], {type:"application/json"});
+          navigator.sendBeacon(url, blob);
+          return "beacon";
+        }
+      }catch(_){}
+      throw e;
+    }
   }
-  function auto(){
-    init();
-    const onReady = () => setTimeout(pull, 150);
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onReady, {once:true});
-    else onReady();
-    const onHide = () => { push(); };
-    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'hidden') onHide(); });
-    window.addEventListener('pagehide', onHide);
-    window.addEventListener('beforeunload', onHide);
+
+  // --- core ---
+  async function pull(){
+    const endpoint = cfg.endpoint;
+    if(!endpoint || !/^https?:\/\//.test(endpoint)) return;
+    try{
+      const j = await httpGet(endpoint);
+      if (j && j.ok && j.data){
+        Object.entries(j.data).forEach(([k,v])=>{
+          try{ if(shouldSyncKey(k)) LS.setItem(k, JSON.stringify(v)); }catch(_){}
+        });
+        lastPull = now();
+        LS.setItem("amko:lastPull", String(lastPull));
+      }
+    }catch(_){ /* ignore network */ }
   }
-  global.amkoSync = { init, pull, push, auto };
+
+  async function push(force=false){
+    const endpoint = cfg.endpoint;
+    if(!endpoint || !/^https?:\/\//.test(endpoint)) return;
+    try{
+      if (!force && !dirty) return; // kirim hanya jika ada perubahan
+      const payload = collectAll();
+      await httpPost(endpoint, payload);
+      dirty = false;
+      lastPush = now();
+      LS.setItem("amko:lastPush", String(lastPush));
+    }catch(_){ /* ignore network */ }
+  }
+
+  function wrapLocalStorage(){
+    try{
+      const _set = LS.setItem.bind(LS);
+      LS.setItem = function(k,v){ try{ _set(k,v); } finally { dirty = true; } };
+      const _remove = LS.removeItem.bind(LS);
+      LS.removeItem = function(k){ try{ _remove(k); } finally { dirty = true; } };
+      const _clear = LS.clear.bind(LS);
+      LS.clear = function(){ try{ _clear(); } finally { dirty = true; } };
+    }catch(_){}
+  }
+
+  function timers(){
+    if (cfg.autoPullMs > 0){
+      setInterval(()=>{ pull(); }, cfg.autoPullMs);
+    }
+    if (cfg.autoPushMs > 0){
+      setInterval(()=>{ push(false); }, cfg.autoPushMs);
+    }
+  }
+
+  function init(userCfg){
+    if (inited) return;
+    cfg = {...cfgDefaults, ...(global.AMKO_SYNC_CONFIG||{}), ...(userCfg||{})};
+    inited = true;
+    wrapLocalStorage();
+    // initial pull
+    setTimeout(pull, 150);
+    // push on hide/unload
+    const onHide = ()=>{ push(true); };
+    document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState === "hidden") onHide(); });
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
+    timers();
+  }
+
+  // expose
+  global.amkoSync = {
+    init,
+    auto: ()=>init(),
+    pull,
+    push,
+    syncNow: async ()=>{ await push(true); await pull(); }
+  };
 })(window);
