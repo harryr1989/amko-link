@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+  <base href="">
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>AMKO — Dashboard (Owner)</title>
@@ -197,52 +198,16 @@ small,.form-text{ font-size: 12px; }
 #tblBranchWrap .toggle-rot[aria-expanded="true"]{ transform: rotate(180deg); }
 </style>
 
-<!-- AMKO mobile v2 CSS -->
-<style id="amko-mobile-css-2">
-:root{ --amko-bar-h:56px; }
-@media (max-width: 992px){
-  body.amko-mobile-v2{ overflow-x:hidden; }
-  /* Sticky topbar safeguard */
-  .topbar, header.topbar{ position: sticky; top: 0; z-index: 25; background: inherit; }
-  main, .content, .wrapper, .container, .container-fluid{ scroll-padding-top: var(--amko-bar-h); }
-
-  /* Sidebar drawer */
-  .sidebar{ position: fixed !important; top: 0; left: 0; height: 100dvh; width: min(82vw, 320px);
-    transform: translateX(-102%); transition: transform .2s ease; z-index: 30; background: inherit; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
-  body.amko-drawer-open .sidebar{ transform: translateX(0); }
-  /* Backdrop */
-  .amko-backdrop{ display:none; }
-  body.amko-drawer-open .amko-backdrop{ display:block; position: fixed; inset: 0; background: rgba(2,6,23,.42);
-    backdrop-filter: saturate(120%) blur(1px); z-index: 25; }
-
-  /* Hamburger */
-  #amkoHamburger2{ display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .8rem; border:0; border-radius:.75rem;
-    background:#0ea5e9; color:#fff; font-weight:600; }
-  .amko-fab2{ position: fixed; top:.75rem; left:.75rem; z-index:35; box-shadow:0 8px 24px rgba(0,0,0,.18); }
-
-  /* Auto-grid for cards/widgets */
-  .amko-auto-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
-  .amko-auto-grid > .card, .amko-auto-grid > .widget, .amko-auto-grid > .tile{ min-width:0; }
-
-  /* Tables scroll */
-  .amko-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .amko-table-wrap table{ min-width: 720px; }
-
-  /* Bottom bar */
-  .amko-bottom-bar{ position: fixed; left:0; right:0; bottom:0; height: var(--amko-bar-h); z-index: 40;
-    background: #0b1220; color:#fff; display:flex; align-items:center; justify-content:space-around; gap:8px; }
-  .amko-bottom-bar button, .amko-bottom-bar a{ appearance:none; border:0; background:transparent; color:inherit; font:inherit;
-    display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 8px; min-width:64px; text-decoration:none; }
-  .amko-bottom-spacer{ height: var(--amko-bar-h); }
-
-  /* Images/charts responsive */
-  img, canvas, svg{ max-width:100%; height:auto; }
-}
+<style>
+/* Mobile nav toggle in topbar (selaras halaman lain) */
+.nav-toggle{display:none; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:10px; background:#fff}
+.nav-toggle:active{transform:scale(.98)}
+@media (max-width:960px){ .nav-toggle{display:inline-flex} }
+.topbar{ z-index: 12 !important; } /* naikkan agar tidak ketutup */
 </style>
 
 </head>
 <body>
-<div class=\"amko-backdrop\" id=\"amkoBackdrop2\" aria-hidden=\"true\"></div>
 <div id="root" class="app">
   <!-- SIDEBAR -->
   <aside id="sidebar" class="sidebar" aria-label="Sidebar">
@@ -278,9 +243,8 @@ small,.form-text{ font-size: 12px; }
 
   <!-- MAIN -->
   <main>
-    \1
-  <button id="amkoHamburger2" aria-label="Buka menu">☰ Menu</button>
-
+    <header class="topbar">
+      <button id="navToggle" class="nav-toggle" aria-label="Buka menu">☰</button>
       <strong>Dashboard Owner</strong>
       <span class="chip">Hari ini: <span id="today"></span></span>
     </header>
@@ -717,7 +681,7 @@ small,.form-text{ font-size: 12px; }
   function logout(){
     localStorage.removeItem(AUTH_KEY);
     localStorage.removeItem(EXP_KEY);
-    location.href='login.html';
+    amkoGoto('index.html');
   }
 
   /* ===== State & Init ===== */
@@ -757,8 +721,8 @@ small,.form-text{ font-size: 12px; }
   document.addEventListener('DOMContentLoaded', ()=>{
     // Guard: owner only
     const s=getSession();
-    if(!s){ location.replace('login.html'); return; }
-    if((s.role||'').toLowerCase()!=='owner'){ location.replace('transaksi-mini-atm.html'); return; }
+    if(!s){ amkoGoto('login.html'); return; }
+    if((s.role||'').toLowerCase()!=='owner'){ amkoGoto('transaksi-mini-atm.html'); return; }
     document.body.classList.add('owner');
     $('#currentUser').textContent = s.username || s.name || 'Owner';
     $('#today').textContent = todayD.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -804,85 +768,77 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 });
 </script>
 
-
-<!-- AMKO bottom bar -->
-<div class="amko-bottom-bar" id="amkoBottomBar" role="navigation" aria-label="Menu cepat">
-  <a href="dashboard.html" onclick="amkoGoto && amkoGoto('dashboard.html'); return false;">🏠<small>Home</small></a>
-  <a href="transaksi-mini-atm.html" onclick="amkoGoto && amkoGoto('transaksi-mini-atm.html'); return false;">💳<small>Transaksi</small></a>
-  <a href="mutasi-saldo.html" onclick="amkoGoto && amkoGoto('mutasi-saldo.html'); return false;">🔁<small>Mutasi</small></a>
-  <a href="saldo-real.html" onclick="amkoGoto && amkoGoto('saldo-real.html'); return false;">💰<small>Saldo</small></a>
-  <a href="master-saldo-akun.html" onclick="amkoGoto && amkoGoto('master-saldo-akun.html'); return false;">📂<small>Master</small></a>
-</div>
-<div class="amko-bottom-spacer" aria-hidden="true"></div>
-
-
-<!-- AMKO mobile v2 JS -->
-<script id="amko-mobile-js-2">
-(function(){
-  if (window.__amkoMobileInit2) return; window.__amkoMobileInit2 = true;
-
-  function isMobile(){ return window.innerWidth <= 992; }
-  function applyFlags(){
-    document.body.classList.toggle('amko-mobile-v2', isMobile());
+<script>
+  function amkoLogout(){
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    window.amkoGoto('index.html');
   }
-  applyFlags(); window.addEventListener('resize', applyFlags);
-
-  const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar') || document.querySelector('aside');
-  const backdrop = document.getElementById('amkoBackdrop2');
-  const burger = document.getElementById('amkoHamburger2');
-  function openDrawer(){ if(!sidebar) return; document.body.classList.add('amko-drawer-open'); }
-  function closeDrawer(){ document.body.classList.remove('amko-drawer-open'); }
-  burger && burger.addEventListener('click', openDrawer);
-  backdrop && backdrop.addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); });
-
-  // Auto-grid: find parents that contain multiple .card/.widget/.tile and grid them.
+</script>
+<script>
+function amkoGoto(p){
   try{
-    const candidates = Array.from(document.querySelectorAll('main, .content, .container, .container-fluid, .wrapper'));
-    candidates.forEach(c=>{
-      const kids = Array.from(c.children || []);
-      const cards = kids.filter(k => /(card|widget|tile)/i.test(k.className||''));
-      if (cards.length >= 2){
-        c.classList.add('amko-auto-grid');
-      }
-    });
-  }catch(e){}
+    var s = String(p||'index.html').trim();
+    s = s.replace(/^['"]+|['"]+$/g,'');
+    s = s.replace(/^\.+\//,'');
+    s = s.replace(/^\/+/, '');
+    window.location.href = s || 'index.html';
+  }catch(e){
+    window.amkoGoto('index.html');
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="amko-supa.config.js"></script>
+<script src="amko-supa.js"></script>
+<script>window.amkoSupa && amkoSupa.auto && amkoSupa.auto();</script>
 
-  // Wrap wide tables to be horizontally scrollable.
+<script>
+/* AMKO dashboard mobile wiring */
+(function(){
+  const sidebar = document.querySelector('.sidebar');
+  const openBtn = document.getElementById('navToggle');
+  const closeBtn = document.getElementById('mobileOpen'); // tombol ✕ yang sudah ada di sidebar
+
+  function openSide(){ sidebar?.classList.add('open'); }
+  function closeSide(){ sidebar?.classList.remove('open'); }
+
+  openBtn && openBtn.addEventListener('click', openSide);
+  closeBtn && closeBtn.addEventListener('click', closeSide);
+
+  // Tutup sidebar setelah klik item menu (biar selaras halaman lain)
+  sidebar?.querySelectorAll('.menu .item').forEach(a=>{
+    a.addEventListener('click', ()=> setTimeout(closeSide, 80), {passive:true});
+  });
+
+  // Swipe untuk buka dari tepi kiri (opsional ringan)
+  let startX=0, startY=0, tracking=false;
+  window.addEventListener('touchstart',(e)=>{
+    const t=e.touches[0]; startX=t.clientX; startY=t.clientY; tracking = (startX<24);
+  },{passive:true});
+  window.addEventListener('touchmove',(e)=>{
+    if(!tracking) return;
+    const t=e.touches[0]; const dx=t.clientX-startX; const dy=Math.abs(t.clientY-startY);
+    if(dy<40 && dx>40){ openSide(); tracking=false; }
+  },{passive:true});
+  window.addEventListener('touchend',()=>{ tracking=false; },{passive:true});
+})();
+</script>
+
+
+<script>
+// Wrap wide tables for horizontal scroll on phones
+(function(){
   function wrapTables(){
-    if (!isMobile()) return;
     document.querySelectorAll('table').forEach(t=>{
-      if (t.closest('.amko-table-wrap')) return;
-      const w = document.createElement('div');
-      w.className = 'amko-table-wrap';
+      if(t.closest('.table-wrap') || t.closest('.amko-table-wrap')) return;
+      const w=document.createElement('div');
+      w.className='table-wrap amko-table-wrap';
       t.parentNode && t.parentNode.insertBefore(w, t);
       w.appendChild(t);
     });
   }
-  wrapTables(); window.addEventListener('resize', wrapTables);
-
-  // Swipe gestures: open from left edge, close by swiping left.
-  let startX = 0, startY = 0, tracking = false;
-  window.addEventListener('touchstart', (e)=>{
-    if (!isMobile()) return;
-    const t = e.touches[0];
-    startX = t.clientX; startY = t.clientY; tracking = (startX < 24); // edge
-  }, {passive:true});
-  window.addEventListener('touchmove', (e)=>{
-    if (!isMobile() || !tracking) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX;
-    const dy = Math.abs(t.clientY - startY);
-    if (dy < 40 && dx > 40){ openDrawer(); tracking = false; }
-  }, {passive:true});
-  window.addEventListener('touchend', ()=>{ tracking = false; }, {passive:true});
-
-  // Close after clicking any link in sidebar (if exists)
-  if (sidebar){
-    sidebar.querySelectorAll('a').forEach(a => {
-      a.addEventListener('click', () => setTimeout(closeDrawer, 80), {passive:true});
-    });
-  }
+  wrapTables();
+  window.addEventListener('resize', wrapTables);
 })();
 </script>
 
