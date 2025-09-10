@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base href="">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - AMKO</title>
@@ -115,6 +114,20 @@ h5{ font-size: 15px; margin: 0; }
 small,.form-text{ font-size: 12px; }
 
 </style>
+
+<!-- AMKO eye toggle CSS -->
+<style id="amko-eye-css">
+.amko-eye-field{ position:relative; display:block; }
+.amko-eye-field > input{ padding-right: 44px !important; width: 100%; box-sizing: border-box; }
+.amko-eye-toggle{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  border:0; background:transparent; border-radius:8px; cursor:pointer;
+}
+.amko-eye-toggle:focus-visible{ outline:2px solid #0ea5e9; outline-offset:2px; }
+.amko-eye-toggle span{ font-size:18px; line-height:1; }
+</style>
+
 </head>
 <body>
   <div class="login-box">
@@ -182,28 +195,37 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 });
 </script>
 
-<script>
-  function amkoLogout(){
-    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
-    window.amkoGoto('index.html');
+
+<!-- AMKO eye toggle JS -->
+<script id="amko-eye-js">
+(function(){
+  if (window.__amkoEyeInit) return; window.__amkoEyeInit = true;
+  function addEye(inp){
+    if (!inp || inp.closest('.amko-eye-field')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'amko-eye-field';
+    inp.parentNode && inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'amko-eye-toggle';
+    btn.setAttribute('aria-label','Tampilkan sandi');
+    btn.innerHTML = '<span aria-hidden="true">👁️</span>';
+    btn.addEventListener('click', function(){
+      var isPw = inp.type === 'password';
+      try{ inp.type = isPw ? 'text' : 'password'; }catch(e){}
+      btn.setAttribute('aria-label', isPw ? 'Sembunyikan sandi' : 'Tampilkan sandi');
+      btn.innerHTML = isPw ? '<span aria-hidden="true">🙈</span>' : '<span aria-hidden="true">👁️</span>';
+    });
+    wrap.appendChild(btn);
   }
-</script>
-<script>
-function amkoGoto(p){
-  try{
-    var s = String(p||'index.html').trim();
-    s = s.replace(/^['"]+|['"]+$/g,'');
-    s = s.replace(/^\.+\//,'');
-    s = s.replace(/^\/+/, '');
-    window.location.href = s || 'index.html';
-  }catch(e){
-    window.amkoGoto('index.html');
+  function init(){
+    document.querySelectorAll('input[type="password"]').forEach(addEye);
   }
-}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="amko-supa.config.js"></script>
-<script src="amko-supa.js"></script>
-<script>window.amkoSupa && amkoSupa.auto && amkoSupa.auto();</script>
+
 </body>
 </html>
