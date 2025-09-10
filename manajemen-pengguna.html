@@ -631,22 +631,21 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
   }
 </script>
 <script>
-// === AMKO safe navigation for GitHub Pages (project subfolder) ===
 function amkoGoto(p){
   try{
     var s = String(p||'index.html').trim();
-    s = s.replace(/^['"]+|['"]+$/g,''); // drop quotes
-    s = s.replace(/^\.+\//,'');       // drop leading ./
-    s = s.replace(/^\/+/, '');         // drop leading /
-    // keep relative path within repo folder
+    s = s.replace(/^['"]+|['"]+$/g,'');
+    s = s.replace(/^\.+\//,'');
+    s = s.replace(/^\/+/, '');
     window.location.href = s || 'index.html';
   }catch(e){
     window.amkoGoto('index.html');
   }
 }
 </script>
-<script src="amko-sync.config.js"></script>
-<script src="amko-sync.js"></script>
-<script>window.amkoSync && amkoSync.auto && amkoSync.auto();</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="amko-supa.config.js"></script>
+<script src="amko-supa.js"></script>
+<script>window.amkoSupa && amkoSupa.auto && amkoSupa.auto();</script>
 </body>
 </html>
