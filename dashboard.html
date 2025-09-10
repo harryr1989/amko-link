@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base href="">
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>AMKO — Dashboard (Owner)</title>
@@ -197,8 +196,74 @@ small,.form-text{ font-size: 12px; }
 }
 #tblBranchWrap .toggle-rot[aria-expanded="true"]{ transform: rotate(180deg); }
 </style>
+
+<!-- AMKO mobile enhancements -->
+<style id="amko-mobile-css">
+/* Only affect when body has .amko-mobile */
+@media (max-width: 992px){
+  body.amko-mobile { overflow-x:hidden; }
+  /* Sidebar drawer behavior */
+  body.amko-mobile .sidebar{
+    position: fixed !important;
+    top: 0; left: 0;
+    height: 100dvh;
+    width: min(78vw, 320px);
+    transform: translateX(-102%);
+    transition: transform .2s ease;
+    z-index: 20;
+    background: inherit; /* keep existing theme */
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  }
+  body.amko-mobile.amko-drawer-open .sidebar{
+    transform: translateX(0);
+  }
+
+  /* Backdrop */
+  .amko-backdrop{
+    display:none;
+  }
+  body.amko-mobile.amko-drawer-open .amko-backdrop{
+    display:block;
+    position: fixed;
+    inset: 0;
+    background: rgba(2,6,23,.45);
+    backdrop-filter: saturate(120%) blur(1px);
+    z-index: 15;
+  }
+
+  /* Hamburger button */
+  .amko-hamburger{
+    display:inline-flex;
+    align-items:center; justify-content:center;
+    gap:.5rem;
+    padding:.5rem .75rem;
+    line-height:1;
+    border:0;
+    border-radius:.75rem;
+    background:#0ea5e9; /* fallback if no framework color */
+    color:white; font-weight:600;
+  }
+  /* If no topbar detected, use floating button */
+  .amko-fab{
+    position: fixed; top: .75rem; left: .75rem;
+    z-index: 30;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+
+  /* Make tables scrollable horizontally */
+  .amko-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling: touch; }
+  .amko-table-wrap table{ min-width:680px; }
+
+  /* Bigger touch targets for header actions */
+  header .btn, .topbar .btn, .topbar a, .topbar button{
+    min-height: 40px; padding-inline: .9rem;
+  }
+}
+</style>
+
 </head>
 <body>
+<div class=\"amko-backdrop\" id=\"amkoBackdrop\"></div>
 <div id="root" class="app">
   <!-- SIDEBAR -->
   <aside id="sidebar" class="sidebar" aria-label="Sidebar">
@@ -234,7 +299,9 @@ small,.form-text{ font-size: 12px; }
 
   <!-- MAIN -->
   <main>
-    <header class="topbar">
+    \1
+  <button class="amko-hamburger" id="amkoHamburger" aria-label="Buka menu">☰ Menu</button>
+
       <strong>Dashboard Owner</strong>
       <span class="chip">Hari ini: <span id="today"></span></span>
     </header>
@@ -671,7 +738,7 @@ small,.form-text{ font-size: 12px; }
   function logout(){
     localStorage.removeItem(AUTH_KEY);
     localStorage.removeItem(EXP_KEY);
-    amkoGoto('index.html');
+    location.href='login.html';
   }
 
   /* ===== State & Init ===== */
@@ -711,8 +778,8 @@ small,.form-text{ font-size: 12px; }
   document.addEventListener('DOMContentLoaded', ()=>{
     // Guard: owner only
     const s=getSession();
-    if(!s){ amkoGoto('login.html'); return; }
-    if((s.role||'').toLowerCase()!=='owner'){ amkoGoto('transaksi-mini-atm.html'); return; }
+    if(!s){ location.replace('login.html'); return; }
+    if((s.role||'').toLowerCase()!=='owner'){ location.replace('transaksi-mini-atm.html'); return; }
     document.body.classList.add('owner');
     $('#currentUser').textContent = s.username || s.name || 'Owner';
     $('#today').textContent = todayD.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -758,28 +825,50 @@ document.querySelectorAll('#mobileClose').forEach(btn=>{
 });
 </script>
 
-<script>
-  function amkoLogout(){
-    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
-    window.amkoGoto('index.html');
+
+<!-- AMKO mobile scripts -->
+<script id="amko-mobile-js">
+(function(){
+  if (window.__amkoMobileInit) return; window.__amkoMobileInit = true;
+
+  function isMobileW(){ return window.innerWidth <= 992; }
+  function applyMobileFlag(){ document.body.classList.toggle('amko-mobile', isMobileW()); }
+  applyMobileFlag(); window.addEventListener('resize', applyMobileFlag);
+
+  const btn = document.getElementById('amkoHamburger');
+  const backdrop = document.getElementById('amkoBackdrop');
+  function openDrawer(){ document.body.classList.add('amko-drawer-open'); }
+  function closeDrawer(){ document.body.classList.remove('amko-drawer-open'); }
+
+  btn && btn.addEventListener('click', openDrawer);
+  backdrop && backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeDrawer(); });
+
+  // Close after clicking a link inside .sidebar
+  function wireSidebarLinks(){
+    var sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar') || document.querySelector('aside') || document.querySelector('nav.sidebar');
+    if(!sidebar) return;
+    sidebar.querySelectorAll('a[href]').forEach(function(a){
+      a.addEventListener('click', function(){ setTimeout(closeDrawer, 50); }, {passive:true});
+    });
   }
-</script>
-<script>
-function amkoGoto(p){
-  try{
-    var s = String(p||'index.html').trim();
-    s = s.replace(/^['"]+|['"]+$/g,'');
-    s = s.replace(/^\.+\//,'');
-    s = s.replace(/^\/+/, '');
-    window.location.href = s || 'index.html';
-  }catch(e){
-    window.amkoGoto('index.html');
+  wireSidebarLinks();
+
+  // Make big tables scrollable on mobile—wrap them once.
+  function wrapTables(){
+    if (!isMobileW()) return;
+    document.querySelectorAll('table').forEach(function(t){
+      if (t.closest('.amko-table-wrap')) return;
+      var w = document.createElement('div');
+      w.className = 'amko-table-wrap';
+      t.parentNode && t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
   }
-}
+  wrapTables();
+  window.addEventListener('resize', wrapTables);
+})();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="amko-supa.config.js"></script>
-<script src="amko-supa.js"></script>
-<script>window.amkoSupa && amkoSupa.auto && amkoSupa.auto();</script>
+
 </body>
 </html>
